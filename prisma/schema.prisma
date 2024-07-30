@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int               @id @default(autoincrement())
+  email             String            @unique
+  loginType         loginType
+  memberStatus      MemberStatus
+  name              String?
+  age               Int?
+  job               String?
+  challenges        String?
+  gender            Gender?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+  lastLoginAt       DateTime?
+  routines          Routine[]
+  routineReviews    RoutineReview[]
+  userPreferences   UserPreference?
+}
+
+model Routine {
+  id                Int               @id @default(autoincrement())
+  userId            Int
+  goal              String
+  startTime         DateTime
+  repeatDays        RepeatDays
+  notificationTime  DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  user              User              @relation(fields: [userId], references: [id])
+  subRoutines       SubRoutine[]
+  routineReviews    RoutineReview[]
+}
+
+model SubRoutine {
+  id                Int               @id @default(autoincrement())
+  routineId         Int
+  goal              String
+  duration          Int
+  emoji             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  routine           Routine           @relation(fields: [routineId], references: [id])
+  subRoutineReviews SubRoutineReview[]
+}
+
+model RoutineReview {
+  id                Int               @id @default(autoincrement())
+  routineId         Int
+  userId            Int
+  reviewDate        DateTime
+  overallRating     OverallRating
+  comments          String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  routine           Routine           @relation(fields: [routineId], references: [id])
+  user              User              @relation(fields: [userId], references: [id])
+  subRoutineReviews SubRoutineReview[]
+}
+
+model SubRoutineReview {
+  id                Int               @id @default(autoincrement())
+  reviewId          Int
+  subRoutineId      Int
+  timeSpent         Int
+  isSkipped         Boolean
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  routineReview     RoutineReview     @relation(fields: [reviewId], references: [id])
+  subRoutine        SubRoutine        @relation(fields: [subRoutineId], references: [id])
+}
+
+model UserPreference {
+  userId            Int               @id
+  termsAgreement    Boolean           @default(false)
+  privacyAgreement  Boolean           @default(false)
+  marketingAgreement Boolean          @default(false)
+  eveningNotifications Boolean        @default(false)
+  updatedAt         DateTime          @updatedAt
+  user              User              @relation(fields: [userId], references: [id])
+}
+
+enum loginType {
+  Kakao
+  Google
+  Apple
+  Guest
+}
+
+enum MemberStatus {
+  Regiester
+  Onboarding
+  Delete
+}
+
+enum Gender {
+  Male
+  Female
+}
+
+enum OverallRating {
+  Difficult
+  Disappointing
+  Satisfied
+  Proud
+}
+
+enum RepeatDays {
+  Mon
+  Tues
+  Wed
+  Thur
+  Fri
+  Sat
+  Sun
+}
