@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateToken } from '../utils/authMiddleware.js';
+import { authenticateRefreshToken } from '../utils/authMiddleware.js';
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -11,7 +11,7 @@ router.get('/', function (req, res, next) {
   res.render('index', { title: 'Express' });
 });
 
-router.post('/auth/token', authenticateToken, (req, res, next) => {
+router.post('/auth/token', authenticateRefreshToken, (req, res, next) => {
   const accessToken = generateAccessToken(req.user);
   const refreshToken = generateRefreshToken(req.user);
 
