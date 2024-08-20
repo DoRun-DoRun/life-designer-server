@@ -14,87 +14,87 @@ datasource db {
 }
 
 model User {
-  id                Int               @id @default(autoincrement())
-  email             String            @unique
-  loginType         loginType
-  memberStatus      MemberStatus
-  name              String?
-  age               Int?
-  job               String?
-  challenges        String?
-  gender            Gender?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  deletedAt         DateTime?
-  lastLoginAt       DateTime?
-  routines          Routine[]
-  routineReviews    RoutineReview[]
-  userPreferences   UserPreference?
+  id              Int             @id @default(autoincrement())
+  email           String          @unique
+  authProvider    AuthProvider
+  memberStatus    MemberStatus
+  name            String?
+  age             Int?
+  job             String?
+  challenges      String?
+  gender          Gender?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  lastLoginAt     DateTime?
+  routines        Routine[]
+  routineReviews  RoutineReview[]
+  userPreferences UserPreference?
 }
 
 model Routine {
-  id                Int               @id @default(autoincrement())
-  userId            Int
-  goal              String
-  startTime         DateTime
-  repeatDays        RepeatDays
-  notificationTime  DateTime?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  user              User              @relation(fields: [userId], references: [id])
-  subRoutines       SubRoutine[]
-  routineReviews    RoutineReview[]
+  id               Int             @id @default(autoincrement())
+  userId           Int
+  goal             String
+  startTime        DateTime
+  repeatDays       RepeatDays
+  notificationTime DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  user             User            @relation(fields: [userId], references: [id])
+  subRoutines      SubRoutine[]
+  routineReviews   RoutineReview[]
 }
 
 model SubRoutine {
-  id                Int               @id @default(autoincrement())
+  id                Int                @id @default(autoincrement())
   routineId         Int
   goal              String
   duration          Int
   emoji             String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  routine           Routine           @relation(fields: [routineId], references: [id])
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  routine           Routine            @relation(fields: [routineId], references: [id], onDelete: Cascade)
   subRoutineReviews SubRoutineReview[]
 }
 
 model RoutineReview {
-  id                Int               @id @default(autoincrement())
+  id                Int                @id @default(autoincrement())
   routineId         Int
   userId            Int
   reviewDate        DateTime
   overallRating     OverallRating
   comments          String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  routine           Routine           @relation(fields: [routineId], references: [id])
-  user              User              @relation(fields: [userId], references: [id])
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  routine           Routine            @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  user              User               @relation(fields: [userId], references: [id])
   subRoutineReviews SubRoutineReview[]
 }
 
 model SubRoutineReview {
-  id                Int               @id @default(autoincrement())
-  reviewId          Int
-  subRoutineId      Int
-  timeSpent         Int
-  isSkipped         Boolean
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  routineReview     RoutineReview     @relation(fields: [reviewId], references: [id])
-  subRoutine        SubRoutine        @relation(fields: [subRoutineId], references: [id])
+  id            Int           @id @default(autoincrement())
+  reviewId      Int
+  subRoutineId  Int
+  timeSpent     Int
+  isSkipped     Boolean
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  routineReview RoutineReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  subRoutine    SubRoutine    @relation(fields: [subRoutineId], references: [id], onDelete: Cascade)
 }
 
 model UserPreference {
-  userId            Int               @id
-  termsAgreement    Boolean           @default(false)
-  privacyAgreement  Boolean           @default(false)
-  marketingAgreement Boolean          @default(false)
-  eveningNotifications Boolean        @default(false)
-  updatedAt         DateTime          @updatedAt
-  user              User              @relation(fields: [userId], references: [id])
+  userId               Int      @id
+  termsAgreement       Boolean  @default(false)
+  privacyAgreement     Boolean  @default(false)
+  marketingAgreement   Boolean  @default(false)
+  eveningNotifications Boolean  @default(false)
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id])
 }
 
-enum loginType {
+enum AuthProvider {
   Kakao
   Google
   Apple
