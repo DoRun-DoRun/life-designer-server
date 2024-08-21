@@ -45,12 +45,28 @@ router.get('/', authenticateToken, (req, res, next) => {
   }
 });
 
-router.use((err, req, res, next) => {
-  console.error(err.stack);
+router.put('/', authenticateToken, async (req, res) => {
+  const { name, age, job, challenges, gender } = req.body;
+  console.log(req.body);
+  req.user;
+  try {
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        name,
+        age,
+        job,
+        challenges,
+        gender,
+      },
+    });
 
-  res.status(500).json({
-    message: err.message || 'Internal Server Error',
-  });
+    res.json(user);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: 'An error occurred while updating the user.' });
+  }
 });
 
 export default router;
