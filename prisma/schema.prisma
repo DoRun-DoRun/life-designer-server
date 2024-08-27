@@ -37,7 +37,7 @@ model Routine {
   userId           Int
   goal             String
   startTime        DateTime
-  repeatDays       RepeatDays
+  repeatDays       String
   notificationTime DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
@@ -50,8 +50,8 @@ model SubRoutine {
   id                Int                @id @default(autoincrement())
   routineId         Int
   goal              String
-  duration          Int
-  emoji             String?
+  duration          DateTime
+  emoji             String
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   routine           Routine            @relation(fields: [routineId], references: [id], onDelete: Cascade)
@@ -117,14 +117,4 @@ enum OverallRating {
   Disappointing
   Satisfied
   Proud
-}
-
-enum RepeatDays {
-  Mon
-  Tues
-  Wed
-  Thur
-  Fri
-  Sat
-  Sun
 }
