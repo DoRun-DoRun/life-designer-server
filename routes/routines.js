@@ -32,10 +32,10 @@ router.get('/', authenticateToken, async function (req, res, next) {
       name: routine.goal,
     }));
 
-    return res.json(routineModels); // 응답 후 함수 종료
+    return res.json(routineModels);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: 'Failed to fetch routines' }); // 응답 후 함수 종료
+    return res.status(500).json({ error: 'Failed to fetch routines' });
   }
 });
 
@@ -46,7 +46,8 @@ router.get('/detail/:id', authenticateToken, async function (req, res, next) {
     const routine = await prisma.routine.findUnique({
       where: { id: routineId },
       include: {
-        subRoutines: true, // subRoutines 포함
+        subRoutines: true,
+        routineReviews: true,
       },
     });
 
@@ -54,30 +55,25 @@ router.get('/detail/:id', authenticateToken, async function (req, res, next) {
       return res.status(404).json({ error: 'Routine not found' });
     }
 
-    // totalDuration 계산
-    const totalDuration = routine.subRoutines.reduce((acc, subRoutine) => {
-      const durationDateTime = new Date(subRoutine.duration); // duration을 Date 객체로 변환
-      const durationInMinutes =
-        durationDateTime.getHours() * 60 + durationDateTime.getMinutes(); // 시간을 분으로 변환
-      return acc + durationInMinutes;
-    }, 0);
+    const totalDuration = routine.subRoutines.reduce(
+      (acc, subRoutine) => acc + subRoutine.duration,
+      0
+    );
 
-    // 반환할 데이터 구조 생성
     const response = {
       id: routine.id,
-      name: routine.goal, // goal을 name으로 사용
+      name: routine.goal,
       startTime: routine.startTime,
       isFinished: routine.subRoutines.every(
         (subRoutine) => subRoutine.isFinished
-      ), // 모든 subRoutine이 완료되었는지 확인
+      ),
       totalDuration: totalDuration,
       subRoutines: routine.subRoutines.map((subRoutine) => ({
         ...subRoutine,
-        duration:
-          new Date(subRoutine.duration).getHours() * 60 * 60 +
-          new Date(subRoutine.duration).getMinutes() * 60,
+        duration: subRoutine.duration,
       })),
     };
+
     res.json(response);
   } catch (error) {
     console.error(error);
@@ -93,9 +89,9 @@ router.post('/', authenticateToken, async (req, res) => {
       data: {
         userId: req.user.id,
         goal: goal,
-        startTime: new Date(startTime),
+        startTime: startTime,
         repeatDays: repeatDays,
-        notificationTime: notificationTime ? new Date(notificationTime) : null,
+        notificationTime: notificationTime ? notificationTime : null,
       },
     });
 
@@ -119,7 +115,7 @@ router.post('/sub_routine', authenticateToken, async (req, res) => {
       data: {
         routineId: id,
         goal: goal,
-        duration: new Date(duration),
+        duration: duration,
         emoji: emoji,
       },
     });
@@ -128,6 +124,33 @@ router.post('/sub_routine', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Failed to create subRoutine:', error);
     res.status(500).json({ error: 'Failed to create subRoutine' });
+  }
+});
+
+router.post('/routine/review', authenticateToken, async (req, res) => {
+  const { routineId, overallRating, comments, subRoutineReviews } = req.body;
+
+  try {
+    const routineReview = await prisma.routineReview.create({
+      data: {
+        routineId: routineId,
+        userId: req.user.id,
+        overallRating: overallRating,
+        comments: comments,
+        subRoutineReviews: {
+          create: subRoutineReviews.map((sub) => ({
+            subRoutineId: sub.subRoutineId,
+            timeSpent: sub.timeSpent,
+            isSkipped: sub.isSkipped,
+          })),
+        },
+      },
+    });
+
+    res.status(201).json(routineReview);
+  } catch (error) {
+    console.error('Failed to create routine review:', error);
+    res.status(500).json({ error: 'Failed to create routine review' });
   }
 });
 
