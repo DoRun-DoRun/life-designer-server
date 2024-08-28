@@ -7,14 +7,13 @@ var router = express.Router();
 function isRoutineFinishedToday(routineReviews) {
   const today = new Date();
   return routineReviews.some((review) => {
-    const reviewDate = new Date(review.reviewDate);
+    const reviewDate = new Date(review.createdAt);
     return reviewDate.toDateString() === today.toDateString();
   });
 }
 
 router.get('/', authenticateToken, async function (req, res, next) {
   try {
-    console.log('$Fetching routines for user:', req.user.id);
     const routines = await prisma.routine.findMany({
       where: {
         userId: req.user.id,
@@ -82,7 +81,8 @@ router.get('/detail/:id', authenticateToken, async function (req, res, next) {
 });
 
 router.post('/', authenticateToken, async (req, res) => {
-  const { goal, startTime, repeatDays, notificationTime } = req.body;
+  const { goal, startTime, repeatDays, notificationTime, subRoutines } =
+    req.body;
 
   try {
     const newRoutine = await prisma.routine.create({
@@ -94,6 +94,19 @@ router.post('/', authenticateToken, async (req, res) => {
         notificationTime: notificationTime ? notificationTime : null,
       },
     });
+
+    if (subRoutines && Array.isArray(subRoutines) && subRoutines.length > 0) {
+      const subRoutineData = subRoutines.map((subRoutine) => ({
+        routineId: newRoutine.id,
+        goal: subRoutine.goal,
+        duration: subRoutine.duration,
+        emoji: subRoutine.emoji,
+      }));
+
+      await prisma.subRoutine.createMany({
+        data: subRoutineData,
+      });
+    }
 
     res.status(201).json({
       id: newRoutine.id,
