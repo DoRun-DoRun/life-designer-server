@@ -1,4 +1,4 @@
-// authMiddleware.js
+import { MemberStatus } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import prisma from '../prisma/prismaClient.js';
 
@@ -11,7 +11,7 @@ export async function authenticateToken(req, res, next) {
 
   console.log(`토큰 확인 ${authHeader}`);
   if (!token) {
-    return res.sendStatus(401); // Unauthorized
+    return res.sendStatus(401);
   }
 
   try {
@@ -24,13 +24,27 @@ export async function authenticateToken(req, res, next) {
 
     if (!user) {
       console.log('User Not Found');
-      return res.sendStatus(404); // User not found
+      return res.sendStatus(404);
     }
 
-    req.user = user; // 요청 객체에 사용자 정보를 추가
-    next(); // 다음 미들웨어 또는 라우트로 이동
+    if (user.memberStatus == MemberStatus.Delete) {
+      console.log('User Deleted');
+      return res.sendStatus(403);
+    }
+
+    await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        lastLoginAt: new Date(),
+      },
+    });
+
+    req.user = user;
+    next();
   } catch (err) {
-    return res.sendStatus(403); // Forbidden
+    return res.sendStatus(403);
   }
 }
 
@@ -39,7 +53,7 @@ export async function authenticateRefreshToken(req, res, next) {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.sendStatus(401); // Unauthorized
+    return res.sendStatus(401);
   }
 
   try {
@@ -52,12 +66,17 @@ export async function authenticateRefreshToken(req, res, next) {
 
     if (!user) {
       console.log('User Not Found');
-      return res.sendStatus(404); // User not found
+      return res.sendStatus(404);
     }
 
-    req.user = user; // 요청 객체에 사용자 정보를 추가
-    next(); // 다음 미들웨어 또는 라우트로 이동
+    if (user.memberStatus == MemberStatus.Delete) {
+      console.log('User Deleted');
+      return res.sendStatus(403);
+    }
+
+    req.user = user;
+    next();
   } catch (err) {
-    return res.sendStatus(403); // Forbidden
+    return res.sendStatus(403);
   }
 }

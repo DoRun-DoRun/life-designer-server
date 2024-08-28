@@ -101,7 +101,7 @@ enum AuthProvider {
 }
 
 enum MemberStatus {
-  Regiester
+  Register
   Onboarding
   Delete
 }
