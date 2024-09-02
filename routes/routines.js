@@ -67,6 +67,8 @@ router.get('/detail/:id', authenticateToken, async function (req, res, next) {
         (subRoutine) => subRoutine.isFinished
       ),
       totalDuration: totalDuration,
+      notificationTime: routine.notificationTime,
+      repeatDays: routine.repeatDays,
       subRoutines: routine.subRoutines.map((subRoutine) => ({
         ...subRoutine,
         duration: subRoutine.duration,
@@ -120,23 +122,83 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/sub_routine', authenticateToken, async (req, res) => {
-  const { id, goal, duration, emoji } = req.body;
+router.delete('/detail/:id', authenticateToken, async (req, res, next) => {
+  const { id } = req.params;
 
   try {
-    const newSubRoutine = await prisma.subRoutine.create({
+    await prisma.routine.delete({
+      where: { id: parseInt(id) },
+    });
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error('Failed to delete routine:', error);
+    return res.status(500).json({ error: 'Failed to delete routine' });
+  }
+});
+
+router.post('/sub_routine', authenticateToken, async (req, res) => {
+  const subRoutines = req.body;
+
+  try {
+    const createdSubRoutines = await Promise.all(
+      subRoutines.map(async (subRoutine) => {
+        const { routineId, goal, duration, emoji } = subRoutine;
+
+        const newSubRoutine = await prisma.subRoutine.create({
+          data: {
+            routineId: routineId,
+            goal: goal,
+            duration: duration,
+            emoji: emoji,
+          },
+        });
+
+        return newSubRoutine;
+      })
+    );
+
+    res.status(201).json(createdSubRoutines);
+  } catch (error) {
+    console.error('Failed to create subRoutines:', error);
+    res.status(500).json({ error: 'Failed to create subRoutines' });
+  }
+});
+
+router.put('/sub_routine/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { routineId, goal, duration, emoji } = req.body;
+
+  try {
+    await prisma.subRoutine.update({
+      where: { id: id },
       data: {
-        routineId: id,
+        routineId: routineId,
         goal: goal,
         duration: duration,
         emoji: emoji,
       },
     });
 
-    res.status(201).json(newSubRoutine);
+    res.status(204).send();
   } catch (error) {
-    console.error('Failed to create subRoutine:', error);
-    res.status(500).json({ error: 'Failed to create subRoutine' });
+    console.error('Failed to update subRoutine:', error);
+    res.status(500).json({ error: 'Failed to update subRoutine' });
+  }
+});
+
+router.delete('/sub_routine/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await prisma.subRoutine.delete({
+      where: { id: parseInt(id) },
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Failed to delete subRoutine:', error);
+    res.status(500).json({ error: 'Failed to delete subRoutine' });
   }
 });
 
