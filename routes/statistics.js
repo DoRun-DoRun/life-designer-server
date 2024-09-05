@@ -120,4 +120,97 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+router.get('/calendar', authenticateToken, async (req, res) => {
+  const { month, year } = req.query;
+
+  if (!month || !year) {
+    return res
+      .status(400)
+      .json({ error: 'month와 year 파라미터가 필요합니다.' });
+  }
+
+  const today = new Date();
+
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0);
+
+  const userId = req.user.id;
+
+  const routineReviews = await prisma.routineReview.findMany({
+    where: {
+      userId: userId,
+      createdAt: {
+        gte: startDate,
+        lt: new Date(
+          endDate.getFullYear(),
+          endDate.getMonth(),
+          endDate.getDate() + 1
+        ),
+      },
+    },
+    include: {
+      subRoutineReviews: true,
+      routine: true,
+    },
+  });
+
+  const routines = await prisma.routine.findMany({
+    where: {
+      userId: userId,
+      OR: [{ deletedAt: null }, { deletedAt: { gte: startDate } }],
+    },
+  });
+
+  let response = {};
+
+  for (let day = 1; day <= endDate.getDate(); day++) {
+    const currentDate = new Date(year, month - 1, day);
+
+    if (currentDate > today) {
+      break;
+    }
+
+    const reviewsOnDate = routineReviews.filter((review) => {
+      return (
+        review.createdAt.toISOString().split('T')[0] ===
+        currentDate.toISOString().split('T')[0]
+      );
+    });
+
+    const validRoutinesOnDate = routines.filter((routine) => {
+      return (
+        (routine.deletedAt === null ||
+          new Date(routine.deletedAt) >= currentDate) &&
+        new Date(routine.createdAt) <= currentDate
+      );
+    });
+
+    const skippedReviews = reviewsOnDate.filter((review) => {
+      return review.subRoutineReviews.every((subReview) => subReview.isSkipped);
+    });
+
+    const failedRoutines = validRoutinesOnDate.filter((routine) => {
+      return !reviewsOnDate.some((review) => review.routineId === routine.id);
+    });
+
+    const completedRoutines = reviewsOnDate
+      .filter((review) => !skippedReviews.includes(review))
+      .map((review) => review.routine.goal);
+
+    const failedRoutineNames = failedRoutines.map((routine) => routine.goal);
+
+    const skippedRoutineNames = skippedReviews.map(
+      (review) => review.routine.goal
+    );
+
+    response[day] = {
+      완료됨: completedRoutines,
+      실패함: failedRoutineNames,
+      건너뜀: skippedRoutineNames,
+    };
+  }
+
+  res.json(response);
+});
+
 export default router;
