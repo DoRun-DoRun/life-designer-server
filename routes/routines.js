@@ -17,6 +17,7 @@ router.get('/', authenticateToken, async function (req, res, next) {
     const routines = await prisma.routine.findMany({
       where: {
         userId: req.user.id,
+        isDeleted: false,
       },
       include: {
         subRoutines: true,
@@ -31,6 +32,13 @@ router.get('/', authenticateToken, async function (req, res, next) {
       name: routine.goal,
     }));
 
+    routineModels.sort((a, b) => {
+      if (a.isFinished !== b.isFinished) {
+        return a.isFinished ? 1 : -1;
+      }
+      return a.startTime - b.startTime;
+    });
+
     return res.json(routineModels);
   } catch (error) {
     console.error(error);
@@ -43,7 +51,7 @@ router.get('/detail/:id', authenticateToken, async function (req, res, next) {
 
   try {
     const routine = await prisma.routine.findUnique({
-      where: { id: routineId },
+      where: { id: routineId, isDeleted: false },
       include: {
         subRoutines: true,
         routineReviews: true,
@@ -110,12 +118,7 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    res.status(201).json({
-      id: newRoutine.id,
-      startTime: newRoutine.startTime,
-      isFinished: false,
-      name: newRoutine.goal,
-    });
+    return res.status(204).send();
   } catch (error) {
     console.error('Failed to create routine:', error);
     res.status(500).json({ error: 'Failed to create routine' });
@@ -126,14 +129,43 @@ router.delete('/detail/:id', authenticateToken, async (req, res, next) => {
   const { id } = req.params;
 
   try {
-    await prisma.routine.delete({
-      where: { id: parseInt(id) },
+    await prisma.routine.update({
+      where: {
+        id: parseInt(id),
+
+        isDeleted: false,
+      },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
     });
 
     return res.status(204).send();
   } catch (error) {
     console.error('Failed to delete routine:', error);
     return res.status(500).json({ error: 'Failed to delete routine' });
+  }
+});
+
+router.put('/', authenticateToken, async (req, res) => {
+  const { routineId, goal, startTime, repeatDays, notificationTime } = req.body;
+
+  try {
+    const updatedRoutine = await prisma.routine.update({
+      where: { id: routineId, isDeleted: false },
+      data: {
+        goal: goal,
+        startTime: startTime,
+        repeatDays: repeatDays,
+        notificationTime: notificationTime ? notificationTime : null,
+      },
+    });
+
+    return res.status(200).json(updatedRoutine);
+  } catch (error) {
+    console.error('Failed to update routine:', error);
+    res.status(500).json({ error: 'Failed to update routine' });
   }
 });
 
@@ -171,7 +203,10 @@ router.put('/sub_routine/:id', authenticateToken, async (req, res) => {
 
   try {
     await prisma.subRoutine.update({
-      where: { id: id },
+      where: {
+        id: id,
+        isDeleted: false,
+      },
       data: {
         routineId: routineId,
         goal: goal,
@@ -191,8 +226,14 @@ router.delete('/sub_routine/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
 
   try {
-    await prisma.subRoutine.delete({
-      where: { id: parseInt(id) },
+    await prisma.subRoutine.update({
+      where: {
+        id: parseInt(id),
+        isDeleted: false,
+      },
+      data: {
+        isDeleted: true,
+      },
     });
 
     res.status(204).send();

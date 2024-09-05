@@ -7,6 +7,7 @@ import path from 'path';
 import debug from 'debug';
 import indexRouter from './routes/index.js';
 import routineRouter from './routes/routines.js';
+import statisticsRouter from './routes/statistics.js';
 import usersRouter from './routes/users.js';
 
 const errorLog = debug('app:error');
@@ -21,11 +22,12 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(path.resolve(), 'public'))); // __dirname 대신 path.resolve() 사용
+app.use(express.static(path.join(path.resolve(), 'public')));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/routines', routineRouter);
+app.use('/statistics', statisticsRouter);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
