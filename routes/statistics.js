@@ -23,15 +23,17 @@ router.get('/', authenticateToken, async (req, res) => {
       ),
     ];
 
-    console.log(uniqueDates);
-
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayString = yesterday.toISOString().split('T')[0];
 
     if (uniqueDates.length == 0) {
-      response = {};
+      response = {
+        maxStreak: 0,
+        recentStreak: 0,
+        totalProcessDays: 0,
+      };
       res.json(response);
     }
 
@@ -54,7 +56,6 @@ router.get('/', authenticateToken, async (req, res) => {
       const diffDays = Math.floor(
         (currentDate - prevDate) / (1000 * 60 * 60 * 24)
       );
-      console.log(diffDays);
 
       if (diffDays === -1) {
         currentStreak++;
@@ -73,10 +74,43 @@ router.get('/', authenticateToken, async (req, res) => {
       }
     }
 
+    const recentDates = uniqueDates.slice(0, recentStreak);
+
+    let totalValidRoutines = 0;
+
+    for (let date of recentDates) {
+      const routinesOnDate = await prisma.routine.count({
+        where: {
+          userId: req.user.id,
+          OR: [{ deletedAt: null }, { deletedAt: { gte: new Date(date) } }],
+        },
+      });
+
+      totalValidRoutines += routinesOnDate;
+    }
+
+    const totalReviews = await prisma.routineReview.count({
+      where: {
+        userId: req.user.id,
+        createdAt: {
+          gte: new Date(recentDates[recentDates.length - 1]),
+          lt: new Date(
+            new Date(recentDates[0]).setDate(
+              new Date(recentDates[0]).getDate() + 1
+            )
+          ),
+        },
+      },
+    });
+
+    const recentPerformanceRate =
+      (totalReviews / (totalValidRoutines * recentStreak)) * 100;
+
     const response = {
       maxStreak: maxStreak,
       recentStreak: recentStreak,
       totalProcessDays: totalProcessDays,
+      recentPerformanceRate: recentPerformanceRate,
     };
 
     res.json(response);
