@@ -213,4 +213,160 @@ router.get('/calendar', authenticateToken, async (req, res) => {
   res.json(response);
 });
 
+router.get('/report', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+
+  const today = new Date();
+
+  const lastWeekEnd = new Date(today);
+  lastWeekEnd.setDate(today.getDate() - today.getDay() - 1);
+  const lastWeekStart = new Date(lastWeekEnd);
+  lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
+
+  const twoWeeksAgoEnd = new Date(lastWeekStart);
+  twoWeeksAgoEnd.setDate(lastWeekStart.getDate() - 1);
+  const twoWeeksAgoStart = new Date(twoWeeksAgoEnd);
+  twoWeeksAgoStart.setDate(twoWeeksAgoEnd.getDate() - 6);
+
+  const lastWeekReviews = await prisma.routineReview.findMany({
+    where: {
+      userId: userId,
+      createdAt: {
+        gte: lastWeekStart,
+        lt: new Date(lastWeekEnd.setDate(lastWeekEnd.getDate() + 1)),
+      },
+    },
+    include: {
+      subRoutineReviews: true,
+      routine: true,
+    },
+  });
+
+  const twoWeeksAgoReviews = await prisma.routineReview.findMany({
+    where: {
+      userId: userId,
+      createdAt: {
+        gte: twoWeeksAgoStart,
+        lt: new Date(twoWeeksAgoEnd.setDate(twoWeeksAgoEnd.getDate() + 1)),
+      },
+    },
+    include: {
+      subRoutineReviews: true,
+      routine: true,
+    },
+  });
+
+  const allRoutines = await prisma.routine.findMany({
+    where: {
+      userId: userId,
+      OR: [{ deletedAt: null }, { deletedAt: { gte: twoWeeksAgoStart } }],
+    },
+  });
+
+  const lastWeekCompleted = lastWeekReviews.filter((review) => {
+    return review.subRoutineReviews.some((subReview) => !subReview.isSkipped);
+  }).length;
+
+  const lastWeekSkipped = lastWeekReviews.filter((review) => {
+    return review.subRoutineReviews.every((subReview) => subReview.isSkipped);
+  }).length;
+
+  const lastWeekFailed = allRoutines.length - lastWeekCompleted;
+
+  const twoWeeksAgoCompleted = twoWeeksAgoReviews.filter((review) => {
+    return review.subRoutineReviews.some((subReview) => !subReview.isSkipped);
+  }).length;
+
+  const twoWeeksAgoTotal = allRoutines.length;
+  const twoWeeksAgoAchievementRate =
+    (twoWeeksAgoCompleted / twoWeeksAgoTotal) * 100;
+
+  let routineFailureCounts = {};
+
+  allRoutines.forEach((routine) => {
+    const routineId = routine.id;
+    const lastWeekRoutineFailed = !lastWeekReviews.some(
+      (review) => review.routineId === routineId
+    );
+    const twoWeeksAgoRoutineFailed = !twoWeeksAgoReviews.some(
+      (review) => review.routineId === routineId
+    );
+
+    if (lastWeekRoutineFailed) {
+      routineFailureCounts[routineId] =
+        (routineFailureCounts[routineId] || 0) + 1;
+    }
+    if (twoWeeksAgoRoutineFailed) {
+      routineFailureCounts[routineId] =
+        (routineFailureCounts[routineId] || 0) + 1;
+    }
+  });
+
+  let maxFailedRoutine = null;
+  let maxFailedCount = 0;
+
+  for (const routineId in routineFailureCounts) {
+    if (routineFailureCounts[routineId] > maxFailedCount) {
+      maxFailedCount = routineFailureCounts[routineId];
+      maxFailedRoutine = allRoutines.find(
+        (routine) => routine.id === parseInt(routineId)
+      );
+    }
+  }
+
+  let routineWeeklyReport = {};
+  if (maxFailedRoutine) {
+    const routineId = maxFailedRoutine.id;
+    let currentWeekStart = new Date(lastWeekStart);
+
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(currentWeekStart);
+      currentDate.setDate(currentWeekStart.getDate() + i);
+
+      if (currentDate < new Date(maxFailedRoutine.createdAt)) {
+        routineWeeklyReport[currentDate.toISOString().split('T')[0]] =
+          '생성되지 않음';
+        continue;
+      }
+
+      const reviewOnDate = lastWeekReviews.find((review) => {
+        return (
+          review.routineId === routineId &&
+          review.createdAt.toDateString() === currentDate.toDateString()
+        );
+      });
+
+      let status = '실패';
+
+      if (reviewOnDate) {
+        const skipped = reviewOnDate.subRoutineReviews.every(
+          (subReview) => subReview.isSkipped
+        );
+        if (skipped) {
+          status = '건너뜀';
+        } else {
+          status = '달성';
+        }
+      }
+
+      routineWeeklyReport[currentDate.toISOString().split('T')[0]] = status;
+    }
+  }
+
+  const response = {
+    current: {
+      completed: lastWeekCompleted,
+      failed: lastWeekFailed,
+      passed: lastWeekSkipped,
+    },
+    past: {
+      progress: twoWeeksAgoAchievementRate.toFixed(2) + '%',
+    },
+    maxFailedRoutine: maxFailedRoutine ? maxFailedRoutine : {},
+    routineWeeklyReport: routineWeeklyReport,
+  };
+
+  res.json(response);
+});
+
 export default router;
