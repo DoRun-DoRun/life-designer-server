@@ -36,6 +36,7 @@ router.get('/', authenticateToken, async function (req, res, next) {
       startTime: routine.startTime,
       isFinished: isRoutineFinishedToday(routine.routineReviews),
       isToday: isRoutineIncluded(routine.repeatDays),
+      repeatDays: routine.repeatDays,
       nextAvailableIn: getNextAvailableDay(routine.repeatDays),
       name: routine.goal,
     }));
