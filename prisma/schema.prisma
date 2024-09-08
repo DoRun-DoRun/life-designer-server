@@ -59,6 +59,7 @@ model SubRoutine {
   updatedAt         DateTime           @updatedAt
   routine           Routine            @relation(fields: [routineId], references: [id], onDelete: Cascade)
   subRoutineReviews SubRoutineReview[]
+  index             Int
 }
 
 model RoutineReview {

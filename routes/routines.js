@@ -12,6 +12,12 @@ function isRoutineFinishedToday(routineReviews) {
   });
 }
 
+function isRoutineIncluded(repeatDays) {
+  let today = new Date().getDay();
+
+  return repeatDays[today];
+}
+
 router.get('/', authenticateToken, async function (req, res, next) {
   try {
     const routines = await prisma.routine.findMany({
@@ -29,13 +35,35 @@ router.get('/', authenticateToken, async function (req, res, next) {
       id: routine.id,
       startTime: routine.startTime,
       isFinished: isRoutineFinishedToday(routine.routineReviews),
+      isToday: isRoutineIncluded(routine.repeatDays),
+      nextAvailableIn: getNextAvailableDay(routine.repeatDays),
       name: routine.goal,
     }));
 
+    function getNextAvailableDay(repeatDays) {
+      const today = new Date().getDay();
+      for (let i = 0; i < 7; i++) {
+        const nextDay = (today + i) % 7;
+        if (repeatDays[nextDay]) {
+          return i;
+        }
+      }
+      return 7;
+    }
+
     routineModels.sort((a, b) => {
-      if (a.isFinished !== b.isFinished) {
+      if (a.isToday !== b.isToday) {
+        return a.isToday ? -1 : 1;
+      }
+
+      if (a.isToday && a.isFinished !== b.isFinished) {
         return a.isFinished ? 1 : -1;
       }
+
+      if (!a.isToday || !b.isToday) {
+        return a.nextAvailableIn - b.nextAvailableIn;
+      }
+
       return a.startTime - b.startTime;
     });
 
@@ -53,7 +81,11 @@ router.get('/detail/:id', authenticateToken, async function (req, res, next) {
     const routine = await prisma.routine.findUnique({
       where: { id: routineId, isDeleted: false },
       include: {
-        subRoutines: true,
+        subRoutines: {
+          orderBy: {
+            index: 'asc',
+          },
+        },
         routineReviews: true,
       },
     });
@@ -105,12 +137,21 @@ router.post('/', authenticateToken, async (req, res) => {
       },
     });
 
+    const lastSubRoutine = await prisma.subRoutine.findFirst({
+      where: { routineId: newRoutine.id },
+      orderBy: { index: 'desc' },
+      select: { index: true },
+    });
+
+    const startingIndex = lastSubRoutine ? lastSubRoutine.index + 1 : 0;
+
     if (subRoutines && Array.isArray(subRoutines) && subRoutines.length > 0) {
-      const subRoutineData = subRoutines.map((subRoutine) => ({
+      const subRoutineData = subRoutines.map((subRoutine, index) => ({
         routineId: newRoutine.id,
         goal: subRoutine.goal,
         duration: subRoutine.duration,
         emoji: subRoutine.emoji,
+        index: startingIndex + index,
       }));
 
       await prisma.subRoutine.createMany({
@@ -173,9 +214,20 @@ router.post('/sub_routine', authenticateToken, async (req, res) => {
   const subRoutines = req.body;
 
   try {
+    if (subRoutines.lenth == 0) return;
+
+    const maxIndexSubRoutine = await prisma.subRoutine.findFirst({
+      where: { routineId: subRoutines[0].routineId },
+      orderBy: { index: 'desc' },
+      select: { index: true },
+    });
+
+    const newIndex = maxIndexSubRoutine ? maxIndexSubRoutine.index + 1 : 0;
+
     const createdSubRoutines = await Promise.all(
-      subRoutines.map(async (subRoutine) => {
+      subRoutines.map(async (subRoutine, index) => {
         const { routineId, goal, duration, emoji } = subRoutine;
+        console.log(newIndex + index);
 
         const newSubRoutine = await prisma.subRoutine.create({
           data: {
@@ -183,6 +235,7 @@ router.post('/sub_routine', authenticateToken, async (req, res) => {
             goal: goal,
             duration: duration,
             emoji: emoji,
+            index: newIndex + index,
           },
         });
 
@@ -199,7 +252,7 @@ router.post('/sub_routine', authenticateToken, async (req, res) => {
 
 router.put('/sub_routine/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { routineId, goal, duration, emoji } = req.body;
+  const { routineId, goal, duration, emoji, index } = req.body;
 
   try {
     await prisma.subRoutine.update({
@@ -212,6 +265,7 @@ router.put('/sub_routine/:id', authenticateToken, async (req, res) => {
         goal: goal,
         duration: duration,
         emoji: emoji,
+        index: index,
       },
     });
 
@@ -219,6 +273,23 @@ router.put('/sub_routine/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Failed to update subRoutine:', error);
     res.status(500).json({ error: 'Failed to update subRoutine' });
+  }
+});
+
+router.put('/sub_routine/order/:id', authenticateToken, async (req, res) => {
+  console.log(req.body);
+
+  try {
+    for (const subRoutine of req.body) {
+      await prisma.subRoutine.update({
+        where: { id: subRoutine.id },
+        data: { index: subRoutine.index },
+      });
+    }
+
+    res.status(200).json({ message: 'SubRoutine order updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update SubRoutine order' });
   }
 });
 
