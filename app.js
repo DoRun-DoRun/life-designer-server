@@ -10,10 +10,13 @@ import routineRouter from './routes/routines.js';
 import statisticsRouter from './routes/statistics.js';
 import subRoutineRouter from './routes/subRoutines.js';
 import usersRouter from './routes/users.js';
+import swaggerSetup from './swaggerConfig.js';
 
 const errorLog = debug('app:error');
 
 const app = express();
+
+swaggerSetup(app);
 
 // view engine setup
 app.set('views', path.join(path.resolve(), 'views')); // __dirname 대신 path.resolve() 사용
