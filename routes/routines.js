@@ -148,11 +148,25 @@ router.delete('/detail/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
 
   try {
+    // 먼저 해당 루틴이 존재하는지, 그리고 사용자의 루틴인지 확인
+    const routine = await prisma.routine.findUnique({
+      where: { id: parseInt(id, 10), isDeleted: false },
+    });
+
+    if (!routine) {
+      return res.status(404).json({ error: 'Routine not found' });
+    }
+
+    // 루틴이 현재 사용자의 루틴이 아닌 경우
+    if (routine.userId !== req.user.id) {
+      return res
+        .status(403)
+        .json({ error: 'You are not authorized to delete this routine' });
+    }
+
+    // 사용자의 루틴인 경우에만 삭제 진행
     await prisma.routine.update({
-      where: {
-        id: parseInt(id, 10),
-        isDeleted: false,
-      },
+      where: { id: parseInt(id, 10), isDeleted: false },
       data: {
         isDeleted: true,
         deletedAt: new Date(),
@@ -170,6 +184,23 @@ router.put('/', authenticateToken, async (req, res) => {
   const { routineId, goal, startTime, repeatDays, notificationTime } = req.body;
 
   try {
+    // 먼저 해당 루틴이 존재하는지, 그리고 사용자의 루틴인지 확인
+    const routine = await prisma.routine.findUnique({
+      where: { id: routineId, isDeleted: false },
+    });
+
+    if (!routine) {
+      return res.status(404).json({ error: 'Routine not found' });
+    }
+
+    // 루틴이 현재 사용자의 루틴이 아닌 경우
+    if (routine.userId !== req.user.id) {
+      return res
+        .status(403)
+        .json({ error: 'You are not authorized to modify this routine' });
+    }
+
+    // 사용자의 루틴인 경우에만 업데이트 진행
     const updatedRoutine = await prisma.routine.update({
       where: { id: routineId, isDeleted: false },
       data: {
@@ -186,5 +217,3 @@ router.put('/', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Failed to update routine' });
   }
 });
-
-export default router;

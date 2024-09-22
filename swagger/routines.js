@@ -28,8 +28,7 @@
  *                     type: integer
  *                     description: 루틴 ID
  *                   startTime:
- *                     type: string
- *                     format: time
+ *                     type: integer
  *                     description: 루틴 시작 시간
  *                   isFinished:
  *                     type: boolean
@@ -40,7 +39,9 @@
  *                   repeatDays:
  *                     type: array
  *                     items:
- *                       type: string
+ *                       type: boolean
+ *                     minItems: 7
+ *                     maxItems: 7
  *                     description: 루틴이 반복되는 요일들
  *                   nextAvailableIn:
  *                     type: integer
@@ -83,8 +84,7 @@
  *                   type: string
  *                   description: 루틴 목표
  *                 startTime:
- *                   type: string
- *                   format: time
+ *                   type: integer
  *                   description: 루틴 시작 시간
  *                 isFinished:
  *                   type: boolean
@@ -93,13 +93,14 @@
  *                   type: integer
  *                   description: 서브루틴의 총 소요 시간 (분)
  *                 notificationTime:
- *                   type: string
- *                   format: time
+ *                   type: integer
  *                   description: 알림 시간
  *                 repeatDays:
  *                   type: array
  *                   items:
- *                     type: string
+ *                     type: boolean
+ *                   minItems: 7
+ *                   maxItems: 7
  *                   description: 루틴이 반복되는 요일들
  *                 subRoutines:
  *                   type: array
@@ -141,17 +142,17 @@
  *                 type: string
  *                 description: 루틴 목표
  *               startTime:
- *                 type: string
- *                 format: time
+ *                 type: integer
  *                 description: 루틴 시작 시간
  *               repeatDays:
  *                 type: array
  *                 items:
- *                   type: string
+ *                   type: boolean
+ *                 minItems: 7
+ *                 maxItems: 7
  *                 description: 루틴이 반복되는 요일들
  *               notificationTime:
- *                 type: string
- *                 format: time
+ *                 type: integer
  *                 description: 알림 시간
  *               subRoutines:
  *                 type: array
@@ -220,17 +221,17 @@
  *                 type: string
  *                 description: 루틴 목표
  *               startTime:
- *                 type: string
- *                 format: time
+ *                 type: integer
  *                 description: 루틴 시작 시간
  *               repeatDays:
  *                 type: array
  *                 items:
- *                   type: string
+ *                   type: boolean
+ *                 minItems: 7
+ *                 maxItems: 7
  *                 description: 루틴이 반복되는 요일들
  *               notificationTime:
- *                 type: string
- *                 format: time
+ *                 type: integer
  *                 description: 알림 시간
  *     responses:
  *       200:
@@ -247,17 +248,17 @@
  *                   type: string
  *                   description: 루틴 목표
  *                 startTime:
- *                   type: string
- *                   format: time
+ *                   type: integer
  *                   description: 루틴 시작 시간
  *                 repeatDays:
  *                   type: array
  *                   items:
- *                     type: string
+ *                     type: boolean
+ *                   minItems: 7
+ *                   maxItems: 7
  *                   description: 루틴이 반복되는 요일들
  *                 notificationTime:
- *                   type: string
- *                   format: time
+ *                   type: integer
  *                   description: 알림 시간
  *       500:
  *         description: 서버 오류

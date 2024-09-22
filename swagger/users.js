@@ -96,13 +96,15 @@
  *                 type: string
  *                 description: 사용자 이름
  *               age:
- *                 type: integer
+ *                 type: string
  *                 description: 사용자 나이
  *               job:
  *                 type: string
  *                 description: 사용자 직업
  *               challenges:
- *                 type: string
+ *                 type: array
+ *                 items:
+ *                   type: string
  *                 description: 사용자가 직면한 도전과제들
  *               gender:
  *                 type: string
