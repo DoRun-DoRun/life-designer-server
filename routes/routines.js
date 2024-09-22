@@ -217,3 +217,32 @@ router.put('/', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Failed to update routine' });
   }
 });
+
+router.post('/routine/review', authenticateToken, async (req, res) => {
+  const { routineId, overallRating, comments, subRoutineReviews } = req.body;
+
+  try {
+    const routineReview = await prisma.routineReview.create({
+      data: {
+        routineId: routineId,
+        userId: req.user.id,
+        overallRating: overallRating,
+        comments: comments,
+        subRoutineReviews: {
+          create: subRoutineReviews.map((sub) => ({
+            subRoutineId: sub.subRoutineId,
+            timeSpent: sub.timeSpent,
+            isSkipped: sub.isSkipped,
+          })),
+        },
+      },
+    });
+
+    res.status(201).json(routineReview);
+  } catch (error) {
+    console.error('Failed to create routine review:', error);
+    res.status(500).json({ error: 'Failed to create routine review' });
+  }
+});
+
+export default router;
