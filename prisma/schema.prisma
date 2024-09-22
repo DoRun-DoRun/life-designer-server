@@ -101,7 +101,7 @@ enum AuthProvider {
   Kakao
   Google
   Apple
-  Guest
+  // Guest
 }
 
 enum MemberStatus {

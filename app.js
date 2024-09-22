@@ -8,6 +8,7 @@ import debug from 'debug';
 import indexRouter from './routes/index.js';
 import routineRouter from './routes/routines.js';
 import statisticsRouter from './routes/statistics.js';
+import subRoutineRouter from './routes/subRoutines.js';
 import usersRouter from './routes/users.js';
 
 const errorLog = debug('app:error');
@@ -27,6 +28,7 @@ app.use(express.static(path.join(path.resolve(), 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/routines', routineRouter);
+app.use('/subRoutines', subRoutineRouter);
 app.use('/statistics', statisticsRouter);
 
 // catch 404 and forward to error handler
