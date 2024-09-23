@@ -1,16 +1,16 @@
 /**
  * @swagger
- * tags:
- *   name: SubRoutines
+    tags:
+ *   name: SubRoutine
  *   description: 서브루틴 관련 API
  */
 
 /**
  * @swagger
- * /subRoutines:
+ * routines/subRoutine:
  *   post:
  *     summary: 새로운 서브루틴 생성
- *     tags: [SubRoutines]
+ *     tags: [SubRoutine]
  *     description: 주어진 루틴 ID에 따라 새로운 서브루틴을 생성합니다.
  *     security:
  *       - bearerAuth: []
@@ -68,10 +68,10 @@
 
 /**
  * @swagger
- * /subRoutines/{id}:
+ * routines/subRoutine/{id}:
  *   put:
  *     summary: 서브루틴 업데이트
- *     tags: [SubRoutines]
+ *     tags: [SubRoutine]
  *     description: 기존 서브루틴의 정보를 업데이트합니다.
  *     security:
  *       - bearerAuth: []
@@ -113,10 +113,10 @@
 
 /**
  * @swagger
- * /subRoutines/order/{id}:
+ * routines/subRoutine/order/{id}:
  *   put:
  *     summary: 서브루틴 순서 업데이트
- *     tags: [SubRoutines]
+ *     tags: [SubRoutine]
  *     description: 서브루틴의 순서를 업데이트합니다.
  *     security:
  *       - bearerAuth: []
@@ -152,10 +152,10 @@
 
 /**
  * @swagger
- * /subRoutines/{id}:
+ * routines/subRoutine/{id}:
  *   delete:
  *     summary: 서브루틴 삭제
- *     tags: [SubRoutines]
+ *     tags: [SubRoutine]
  *     description: 서브루틴을 삭제합니다. 실제 데이터는 삭제되지 않으며, isDeleted 플래그를 true로 설정합니다.
  *     security:
  *       - bearerAuth: []

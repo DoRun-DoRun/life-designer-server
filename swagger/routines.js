@@ -263,3 +263,99 @@
  *       500:
  *         description: 서버 오류
  */
+
+/**
+ * @swagger
+ * /routines/routine/review:
+ *   post:
+ *     summary: 루틴 리뷰 생성
+ *     tags: [Routines]
+ *     description: 사용자가 특정 루틴에 대해 리뷰를 작성합니다. 전체 평점, 코멘트 및 각 서브루틴에 대한 개별 리뷰를 포함할 수 있습니다.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               routineId:
+ *                 type: integer
+ *                 description: 리뷰할 루틴의 ID
+ *                 example: 1
+ *               overallRating:
+ *                 type: integer
+ *                 description: 루틴에 대한 전체 평점 (1-5)
+ *                 example: 5
+ *               comments:
+ *                 type: string
+ *                 description: 루틴에 대한 코멘트
+ *                 example: "This routine was very effective."
+ *               subRoutineReviews:
+ *                 type: array
+ *                 description: 각 서브루틴에 대한 개별 리뷰
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     subRoutineId:
+ *                       type: integer
+ *                       description: 서브루틴의 ID
+ *                       example: 1
+ *                     timeSpent:
+ *                       type: integer
+ *                       description: 서브루틴에 소비된 시간 (분 단위)
+ *                       example: 30
+ *                     isSkipped:
+ *                       type: boolean
+ *                       description: 서브루틴이 건너뛰었는지 여부
+ *                       example: false
+ *     responses:
+ *       201:
+ *         description: 리뷰 생성 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   description: 생성된 루틴 리뷰의 ID
+ *                   example: 1
+ *                 routineId:
+ *                   type: integer
+ *                   description: 리뷰된 루틴의 ID
+ *                   example: 1
+ *                 userId:
+ *                   type: integer
+ *                   description: 리뷰를 작성한 사용자의 ID
+ *                   example: 1
+ *                 overallRating:
+ *                   type: integer
+ *                   description: 루틴에 대한 전체 평점 (1-5)
+ *                   example: 5
+ *                 comments:
+ *                   type: string
+ *                   description: 루틴에 대한 코멘트
+ *                   example: "This routine was very effective."
+ *                 subRoutineReviews:
+ *                   type: array
+ *                   description: 각 서브루틴에 대한 개별 리뷰
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       subRoutineId:
+ *                         type: integer
+ *                         description: 서브루틴의 ID
+ *                         example: 1
+ *                       timeSpent:
+ *                         type: integer
+ *                         description: 서브루틴에 소비된 시간 (분 단위)
+ *                         example: 30
+ *                       isSkipped:
+ *                         type: boolean
+ *                         description: 서브루틴이 건너뛰었는지 여부
+ *                         example: false
+ *       500:
+ *         description: 서버 오류로 인해 리뷰 생성 실패
+ */
