@@ -46,6 +46,17 @@ model Routine {
   user             User            @relation(fields: [userId], references: [id])
   subRoutines      SubRoutine[]
   routineReviews   RoutineReview[]
+  virtualRoutines   VirtualRoutine[]
+}
+
+model VirtualRoutine {
+  id              Int             @id @default(autoincrement())
+  routineId       Int
+  startTime       Int
+  createdAt       DateTime
+  updatedAt       DateTime
+  repeatDays      Boolean[]
+  routine         Routine         @relation(fields: [routineId], references: [id], onDelete: Cascade)
 }
 
 model SubRoutine {
