@@ -65,8 +65,8 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const actionDates = [];
     allRoutines.forEach(routine => {
-      const { updatedAt } = routine;
-      actionDates.push(...getDatesBetween(routine, updatedAt, yesterday));
+      const { updatedAt, deletedAt } = routine;
+      actionDates.push(...getDatesBetween(routine, updatedAt, deletedAt ?? yesterday));
     });
 
     allVirtualRoutines.forEach(routine => {
@@ -126,6 +126,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
 
   const userId = req.user.id;
 
+  // 이거 지금 그냥 루틴만 되어있는데, 수정 이전의 루틴에 대해서도 가져와서 통계를 내야함.
   const routineReviews = await prisma.routineReview.findMany({
     where: {
       userId: userId,
