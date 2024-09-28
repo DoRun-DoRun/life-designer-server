@@ -152,15 +152,31 @@ router.get('/calendar', authenticateToken, async (req, res) => {
     },
   });
 
+  // 일단 해당 달에 유효한 모든 가상 루틴을 모두 가져오고, 나중에 필터링 할 예정
+  const archivedRoutines = await prisma.virtualRoutine.findMany({
+    where: {
+      userId: userId,
+      updatedAt: {
+        gte: startDate
+      },
+      createdAt: {
+        lte: endDate
+      }
+    }
+  });
+
   let response = {};
 
+  // 1일부터 마지막일까지 반복
   for (let day = 1; day <= endDate.getDate(); day++) {
     const currentDate = new Date(year, month - 1, day);
 
+    // 오늘까지만 반복
     if (currentDate > today) {
       break;
     }
 
+    // 현재 날짜에 해당하는 모든 리뷰
     const reviewsOnDate = routineReviews.filter((review) => {
       return (
         review.createdAt.toISOString().split('T')[0] ===
@@ -168,25 +184,34 @@ router.get('/calendar', authenticateToken, async (req, res) => {
       );
     });
 
-    const validRoutinesOnDate = routines.filter((routine) => {
+    // 현재 시점에서 삭제되지 않은 모든 루틴 (updatedAt도 고려해야함 + virtualRoutine도 고려해야함.)
+    const validRoutinesOnDate = [...routines.filter((routine) => {
       return (
         (routine.deletedAt === null ||
           new Date(routine.deletedAt) >= currentDate) &&
         new Date(routine.createdAt) <= currentDate
       );
-    });
+    }), ...
+    archivedRoutines.filter((routine) => {
+      return(
+        new Date(routine.updatedAt) >= currentDate &&
+        new Date(routine.createdAt) <= currentDate
+      )
+    })];
 
-    const skippedReviews = reviewsOnDate.filter((review) => {
+    // 스킵, 완료, 실패한 리뷰(루틴)들을 모두 가져옴.
+
+    const skippedReviews = reviewsOnDate.filter((review) => { // 전부 스킵인 것만 스킵. 스킵한 리뷰를 가져옴
       return review.subRoutineReviews.every((subReview) => subReview.isSkipped);
     });
 
-    const failedRoutines = validRoutinesOnDate.filter((routine) => {
+    const failedRoutines = validRoutinesOnDate.filter((routine) => { // 해당일에 리뷰가 하나도 없으면
       return !reviewsOnDate.some((review) => review.routineId === routine.id);
     });
 
     const completedRoutines = reviewsOnDate
-      .filter((review) => !skippedReviews.includes(review))
-      .map((review) => review.routine.goal);
+      .filter((review) => !skippedReviews.includes(review)) // 스킵한거 빼고 가져오기
+      .map((review) => review.routine.goal); // 완료된 루틴 이름 가져오기
 
     const failedRoutineNames = failedRoutines.map((routine) => routine.goal);
 
