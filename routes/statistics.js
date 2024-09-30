@@ -1,7 +1,7 @@
 import express from 'express';
 import prisma from '../prisma/prismaClient.js';
 import { authenticateToken } from '../utils/authMiddleware.js';
-import { getDatesBetween, getMaxStreak } from '../utils/statisticsUtils.js';
+import { getDatesBetween, getMaxStreak, getOnlyDate } from '../utils/statisticsUtils.js';
 
 const router = express.Router();
 
@@ -247,6 +247,7 @@ router.get('/report', authenticateToken, async (req, res) => {
 
   const today = new Date();
 
+  // TODO: 시간을 23시 59분 59초 999분으로 설정해야되는지 여부
   const lastWeekEnd = new Date(today);
   lastWeekEnd.setDate(today.getDate() - today.getDay() - 1);
   const lastWeekStart = new Date(lastWeekEnd);
@@ -400,5 +401,130 @@ router.get('/report', authenticateToken, async (req, res) => {
 
   res.json(response);
 });
+
+router.get('/test', authenticateToken, async (req, res) => {
+  const {year, month, date} = req.query;
+  const d = new Date();
+  d.setFullYear(year, month-1, date);
+  const response = await getRoutineStatusAt(2, d);
+  res.json(response);
+})
+
+/**
+ * 
+ * @param {Int} routineId
+ * @param {Date} date 
+ * @returns {string} status
+ */
+const getRoutineStatusAt = async (routineId, date) => {
+  const nowDate = new Date();
+  const currentDate = new Date(date);
+  const currentDateStart = new Date(currentDate);
+  const currentDateEnd = new Date(
+    getOnlyDate(currentDate) === getOnlyDate(nowDate) ? date : currentDate
+  );
+  currentDateStart.setHours(0, 0, 0, 0);
+  currentDateEnd.setHours(23, 59, 59, 999);
+  // routineId에 해당하는 routine과 virtualRoutines를 가져온다.
+  const routine = await prisma.routine.findFirst({
+    where: {
+      id: routineId,
+    },
+  });
+  console.log(routine);
+
+  // 루틴 시작 시간 변수
+  const currentDateEndReviewTime = new Date(
+    currentDateEnd
+  );
+  currentDateEndReviewTime.setSeconds(
+    currentDateEndReviewTime.getSeconds() + routine.startTime
+  );
+  const currentDateStartTime = new Date(currentDateStart);
+  currentDateStartTime.setHours(0, 0, 0, 0);
+  currentDateStartTime.setSeconds(routine.startTime);
+
+  const virtualRoutines = await prisma.virtualRoutine.findMany({
+    where: {
+      routineId,
+    },
+  }); 
+  let currentRoutines = [];
+  const routineTimeDate = new Date(currentDate);
+  routineTimeDate.setHours(0, 0, 0, 0);
+  routineTimeDate.setSeconds(routine.startTime);
+  console.log(routine.repeatDays, currentDate.getDay());
+
+  if(routine.createdAt > currentDateEnd) {
+    return "생성되지않음";
+  }
+
+  if(routine.deletedAt !== null && routine.deletedAt <= currentDateStart) {
+    return "삭제됨";
+  }
+
+  if(routine.updatedAt < currentDateStartTime && 
+    !routine.repeatDays[(currentDate.getDay() + 6)%7]) {
+    return "일정없음";
+  }
+  // 해당일에 해당하는 virtualReview를 구해옴. Day 비교해서 일정 여부 결정
+  for(let i = 0; i < virtualRoutines.length; i++) {
+    const virtualRoutine = virtualRoutines[i];
+    console.log(virtualRoutine);
+    const virtualCurrentDateStartTime = new Date(currentDateStart);
+    virtualCurrentDateStartTime.setHours(0, 0, 0, 0);
+    virtualCurrentDateStartTime.setSeconds(virtualRoutine.startTime);
+    console.log(virtualRoutine.createdAt);
+    console.log(virtualCurrentDateStartTime);
+    console.log(virtualRoutine.repeatDays[(currentDate.getDay() + 6)%7]);
+    if(virtualRoutine.createdAt < virtualCurrentDateStartTime && 
+      !virtualRoutine.repeatDays[(currentDate.getDay() + 6)%7]) {
+      return "일정없음";
+    }
+  }
+
+  if((routine.updatedAt <= currentDateEnd && 
+    routine.updatedAt <= routineTimeDate)
+    && 
+    (routine.deletedAt === null || (routine.deletedAt < routineTimeDate)
+  )) {
+    currentRoutines.push(routine);
+  }
+
+  currentRoutines.push([...virtualRoutines.filter(routine => {
+    if((routine.createdAt <= currentDateEnd && 
+      routine.createdAt <= routineTimeDate)
+      && 
+      (routine.updatedAt < routineTimeDate)) {
+      return true;
+    }
+    return false;
+  })]);
+
+  // 뉴틴 = 루틴 or 가상루틴
+  // 하나라도 성공이면 성공 -> 해당 날짜에 review가 하나라도있으면 성공
+  // 전부 다 패스면 패스 -> 해당 날짜에 review가 전부 패스면 패스
+  // 전부 다 실패면 싪패 -> 나머진 실패
+  
+  const reviews = await prisma.routineReview.findMany({
+    where: {
+      routineId: routineId,
+      createdAt: {
+        gte: currentDateStart,
+        lte: currentDateEndReviewTime
+      }
+    },
+    include: {
+      subRoutineReviews: true
+    }
+  });
+  console.log("!!!: ", reviews);
+  if(reviews.length === 0) return "실패함";
+  const isSkipped = reviews.every((review) => 
+    review.subRoutineReviews.every(subReview => subReview.isSkipped == true)
+  );
+  if(isSkipped) return "건너뜀";
+  return '완료됨';
+}
 
 export default router;
