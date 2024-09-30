@@ -180,6 +180,9 @@ router.delete('/detail/:id', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * 루틴 업데이트
+ */
 router.put('/', authenticateToken, async (req, res) => {
   const { routineId, goal, startTime, repeatDays, notificationTime } = req.body;
 
@@ -189,7 +192,7 @@ router.put('/', authenticateToken, async (req, res) => {
       where: { id: routineId, isDeleted: false },
     });
 
-    if (!routine) {
+    if (!routine) { // 해당 루틴이 없다면
       return res.status(404).json({ error: 'Routine not found' });
     }
 
@@ -201,6 +204,13 @@ router.put('/', authenticateToken, async (req, res) => {
     }
 
     // 사용자의 루틴인 경우에만 업데이트 진행
+    // 업데이트할 경우, 기존 루틴은 가상 루틴으로 빼서 만든다. createdAt과 updatedAt을 기존 updatedAt과 이후 updatedAt으로 맞춘다.
+    // archivedRoutine이 가상 루틴이다.
+    
+    const archivedCreatedAt = routine.updatedAt;
+    const archivedRepeatDays = [...routine.repeatDays];
+    const archivedStartTime = routine.startTime;
+
     const updatedRoutine = await prisma.routine.update({
       where: { id: routineId, isDeleted: false },
       data: {
@@ -211,6 +221,19 @@ router.put('/', authenticateToken, async (req, res) => {
       },
     });
 
+    const archivedUpdatedAt = updatedRoutine.updatedAt;
+
+    await prisma.virtualRoutine.create({
+      data: {
+        routineId: updatedRoutine.id,
+        startTime: archivedStartTime,
+        createdAt: archivedCreatedAt,
+        updatedAt: archivedUpdatedAt,
+        repeatDays: archivedRepeatDays
+      }
+    });
+    // TODO: Transaction
+
     res.status(200).json(updatedRoutine);
   } catch (error) {
     console.error('Failed to update routine:', error);
@@ -218,6 +241,9 @@ router.put('/', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * 리뷰를 작성합니다.
+ */
 router.post('/routine/review', authenticateToken, async (req, res) => {
   const { routineId, overallRating, comments, subRoutineReviews } = req.body;
 

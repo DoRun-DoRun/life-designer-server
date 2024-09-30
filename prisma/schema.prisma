@@ -33,19 +33,30 @@ model User {
 }
 
 model Routine {
-  id               Int             @id @default(autoincrement())
+  id               Int              @id @default(autoincrement())
   userId           Int
   goal             String
   startTime        Int
   repeatDays       Boolean[]
   notificationTime Int?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
   deletedAt        DateTime?
-  isDeleted        Boolean         @default(false)
-  user             User            @relation(fields: [userId], references: [id])
+  isDeleted        Boolean          @default(false)
+  user             User             @relation(fields: [userId], references: [id])
   subRoutines      SubRoutine[]
   routineReviews   RoutineReview[]
+  virtualRoutines  VirtualRoutine[]
+}
+
+model VirtualRoutine {
+  id         Int       @id @default(autoincrement())
+  routineId  Int
+  startTime  Int
+  createdAt  DateTime
+  updatedAt  DateTime
+  repeatDays Boolean[]
+  routine    Routine   @relation(fields: [routineId], references: [id], onDelete: Cascade)
 }
 
 model SubRoutine {
@@ -101,7 +112,7 @@ enum AuthProvider {
   Kakao
   Google
   Apple
-  // Guest
+  Guest
 }
 
 enum MemberStatus {
