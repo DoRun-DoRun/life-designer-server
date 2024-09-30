@@ -99,6 +99,7 @@ router.get('/', authenticateToken, async (req, res) => {
       totalProcessDays: totalProcessDays,
       recentPerformanceRate: recentPerformanceRate,
     };
+    res.json(response);
 
   } catch(error) {
     console.error('Failed to fetch statistics:', error);
@@ -248,6 +249,7 @@ router.get('/report', authenticateToken, async (req, res) => {
   const twoWeeksAgoStart = new Date(twoWeeksAgoEnd);
   twoWeeksAgoStart.setDate(twoWeeksAgoEnd.getDate() - 6);
 
+  // 지난 주 모든 리뷰
   const lastWeekReviews = await prisma.routineReview.findMany({
     where: {
       userId: userId,
@@ -262,6 +264,7 @@ router.get('/report', authenticateToken, async (req, res) => {
     },
   });
 
+  // 지지난주 모든 리뷰 
   const twoWeeksAgoReviews = await prisma.routineReview.findMany({
     where: {
       userId: userId,
@@ -276,6 +279,7 @@ router.get('/report', authenticateToken, async (req, res) => {
     },
   });
 
+  // 모든 루틴 (지금 지지난주를 해야하는데 이건 모든 루틴을 다가져오는거임)
   const allRoutines = await prisma.routine.findMany({
     where: {
       userId: userId,

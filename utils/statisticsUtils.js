@@ -17,9 +17,8 @@ export function getDatesBetween(routine, startAt, endAt) {
     if(repeatDays[(startDayOfWeek+6)%7] && startSeconds >= startTime) {
         actionDates.push(startAtDateOnly);
     }
-
     let currentDate = new Date(startAt);
-    currentDate = setDate(currentDate.getDate() + 1);
+    currentDate.setDate(currentDate.getDate() + 1);
     while(getOnlyDate(currentDate) !== endAtDateOnly) {
         const currentDayOfWeek = currentDate.getDay();
 
