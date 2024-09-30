@@ -93,7 +93,6 @@ router.get('/', authenticateToken, async (req, res) => {
       routineReviews.length*100 / actionDates.length,
       100
     );
-    console.log("!!!: ",routineReviews.length*100, actionDates);
     const response = {
       maxStreak: maxStreak,
       recentStreak: recentStreak,
@@ -168,7 +167,6 @@ router.get('/calendar', authenticateToken, async (req, res) => {
       }
     }
   });
-  console.log("!!!: ", archivedRoutines.map(r=>r.routineId))
 
   let response = {};
 
@@ -431,7 +429,6 @@ const getRoutineStatusAt = async (routineId, date) => {
       id: routineId,
     },
   });
-  console.log(routine);
 
   // 루틴 시작 시간 변수
   const currentDateEndReviewTime = new Date(
@@ -453,7 +450,6 @@ const getRoutineStatusAt = async (routineId, date) => {
   const routineTimeDate = new Date(currentDate);
   routineTimeDate.setHours(0, 0, 0, 0);
   routineTimeDate.setSeconds(routine.startTime);
-  console.log(routine.repeatDays, currentDate.getDay());
 
   if(routine.createdAt > currentDateEnd) {
     return "생성되지않음";
@@ -470,13 +466,9 @@ const getRoutineStatusAt = async (routineId, date) => {
   // 해당일에 해당하는 virtualReview를 구해옴. Day 비교해서 일정 여부 결정
   for(let i = 0; i < virtualRoutines.length; i++) {
     const virtualRoutine = virtualRoutines[i];
-    console.log(virtualRoutine);
     const virtualCurrentDateStartTime = new Date(currentDateStart);
     virtualCurrentDateStartTime.setHours(0, 0, 0, 0);
     virtualCurrentDateStartTime.setSeconds(virtualRoutine.startTime);
-    console.log(virtualRoutine.createdAt);
-    console.log(virtualCurrentDateStartTime);
-    console.log(virtualRoutine.repeatDays[(currentDate.getDay() + 6)%7]);
     if(virtualRoutine.createdAt < virtualCurrentDateStartTime && 
       !virtualRoutine.repeatDays[(currentDate.getDay() + 6)%7]) {
       return "일정없음";
@@ -518,7 +510,6 @@ const getRoutineStatusAt = async (routineId, date) => {
       subRoutineReviews: true
     }
   });
-  console.log("!!!: ", reviews);
   if(reviews.length === 0) return "실패함";
   const isSkipped = reviews.every((review) => 
     review.subRoutineReviews.every(subReview => subReview.isSkipped == true)
