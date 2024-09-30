@@ -90,9 +90,10 @@ router.get('/', authenticateToken, async (req, res) => {
     const maxStreak = getMaxStreak(uniqueActionDates, uniqueDates);
     const totalProcessDays = uniqueDates.length;
     const recentPerformanceRate = Math.min(
-      routineReviews.length*100 / actionDates,
+      routineReviews.length*100 / actionDates.length,
       100
     );
+    console.log("!!!: ",routineReviews.length*100, actionDates);
     const response = {
       maxStreak: maxStreak,
       recentStreak: recentStreak,
