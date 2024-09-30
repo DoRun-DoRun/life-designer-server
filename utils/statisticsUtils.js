@@ -69,4 +69,4 @@ const getSeconds = (date) => date.getHours() * 3600 + date.getMinutes * 60 + dat
  * @param {Date} date 
  * @returns 날짜를 반환합니다. 'yyyy-mm-dd'
  */
-const getOnlyDate = (date) => date.toISOString().split('T')[0];
+export const getOnlyDate = (date) => date.toISOString().split('T')[0];
