@@ -157,7 +157,9 @@ router.get('/calendar', authenticateToken, async (req, res) => {
   // 일단 해당 달에 유효한 모든 가상 루틴을 모두 가져오고, 나중에 필터링 할 예정
   const archivedRoutines = await prisma.virtualRoutine.findMany({
     where: {
-      userId: userId,
+      routineId: {
+        in: routines.map(routine=>routine.id)
+      },
       updatedAt: {
         gte: startDate
       },
@@ -166,6 +168,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
       }
     }
   });
+  console.log("!!!: ", archivedRoutines.map(r=>r.routineId))
 
   let response = {};
 
@@ -189,9 +192,8 @@ router.get('/calendar', authenticateToken, async (req, res) => {
     // 현재 시점에서 삭제되지 않은 모든 루틴 (updatedAt도 고려해야함 + virtualRoutine도 고려해야함.)
     const validRoutinesOnDate = [...routines.filter((routine) => {
       return (
-        (routine.deletedAt === null ||
-          new Date(routine.deletedAt) >= currentDate) &&
-        new Date(routine.createdAt) <= currentDate
+        new Date(routine.updatedAt) <= currentDate && 
+        (routine.deletedAt === null || new Date(routine.deletedAt) >= currentDate)
       );
     }), ...
     archivedRoutines.filter((routine) => {
@@ -208,6 +210,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
     });
 
     const failedRoutines = validRoutinesOnDate.filter((routine) => { // 해당일에 리뷰가 하나도 없으면
+      if(routine.repeatDays[(currentDate.getDay() + 6)%7] === false) return false;
       return !reviewsOnDate.some((review) => review.routineId === routine.id);
     });
 
@@ -215,7 +218,11 @@ router.get('/calendar', authenticateToken, async (req, res) => {
       .filter((review) => !skippedReviews.includes(review)) // 스킵한거 빼고 가져오기
       .map((review) => review.routine.goal); // 완료된 루틴 이름 가져오기
 
-    const failedRoutineNames = failedRoutines.map((routine) => routine.goal);
+    const failedRoutineNames = failedRoutines.map(
+      (routine) => {
+        return routine.goal ?? routines.filter(r=>r.id==routine.routineId)[0].goal
+      }
+    );
 
     const skippedRoutineNames = skippedReviews.map(
       (review) => review.routine.goal
