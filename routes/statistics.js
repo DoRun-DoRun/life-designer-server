@@ -414,7 +414,7 @@ router.get('/test', authenticateToken, async (req, res) => {
  * 
  * @param {Int} routineId
  * @param {Date} date 
- * @returns {string} status
+ * @returns {string} status 완료됨, 건너뜀, 실패함, 일정없음, 삭제됨, 생성되지않음
  */
 const getRoutineStatusAt = async (routineId, date) => {
   const nowDate = new Date();
