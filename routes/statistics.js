@@ -243,19 +243,73 @@ router.get('/calendar', authenticateToken, async (req, res) => {
 router.get('/report', authenticateToken, async (req, res) => {
   const userId = req.user.id;
 
+  // DB가 without timezone이기 때문에 보정 필요?
   const today = new Date();
 
   // TODO: 시간을 23시 59분 59초 999분으로 설정해야되는지 여부
   const lastWeekEnd = new Date(today);
-  lastWeekEnd.setDate(today.getDate() - today.getDay() - 1);
+  lastWeekEnd.setDate(today.getDate() - today.getDay());
+  lastWeekEnd.setUTCHours(23, 59, 59, 999);
   const lastWeekStart = new Date(lastWeekEnd);
-  lastWeekStart.setDate(lastWeekEnd.getDate() - 6);
+  lastWeekStart.setDate(lastWeekEnd.getDate() - 7);
+  lastWeekStart.setUTCHours(0, 0, 0, 0);
 
   const twoWeeksAgoEnd = new Date(lastWeekStart);
-  twoWeeksAgoEnd.setDate(lastWeekStart.getDate() - 1);
+  twoWeeksAgoEnd.setDate(lastWeekStart.getDate());
+  twoWeeksAgoEnd.setUTCHours(23, 59, 59, 999);
   const twoWeeksAgoStart = new Date(twoWeeksAgoEnd);
-  twoWeeksAgoStart.setDate(twoWeeksAgoEnd.getDate() - 6);
+  twoWeeksAgoStart.setDate(twoWeeksAgoEnd.getDate() - 7);
+  twoWeeksAgoStart.setUTCHours(0, 0, 0, 0);
 
+  // 해당 주에 유효한 모든 루틴들을 가져온다.
+  // 아니다 유저의 모든 루틴을 가져온다.
+
+  const routines = await prisma.routine.findMany({
+    where: {
+      userId: userId,
+      createdAt: {
+        lte: lastWeekEnd
+      },
+      OR: [
+        {
+          deletedAt: null
+        },
+        {
+          deletedAt: {
+            gte: twoWeeksAgoStart
+          }
+        }
+      ]
+    }
+  });
+
+  let currentDate = new Date(twoWeeksAgoStart);
+  const twoWeeksAgoStatuses = {'완료됨': 0, '건너뜀': 0, '실패함': 0};
+  while(currentDate < twoWeeksAgoEnd) {
+    for(let i = 0; i < routines.length; i++) {
+      const routine = routines[i];
+      const status = await getRoutineStatusAt(routine.id, currentDate);
+      console.log(currentDate, status);
+      if(twoWeeksAgoStatuses[status] !== undefined) {
+        twoWeeksAgoStatuses[status]++;
+      }
+    }
+    currentDate.setDate(currentDate.getDate() + 1); // next
+  }
+
+  const lastWeekStatuses = {'완료됨': 0, '건너뜀': 0, '실패함': 0};
+  while(currentDate < lastWeekEnd) {
+    for(let i = 0; i < routines.length; i++) {
+      const routine = routines[i];
+      const status = await getRoutineStatusAt(routine.id, currentDate);
+      if(lastWeekStatuses[status] !== undefined) {
+        lastWeekStatuses[status]++;
+      }
+    }
+    currentDate.setDate(currentDate.getDate() + 1); // next
+  }
+
+  /*
   // 지난 주 모든 리뷰
   const lastWeekReviews = await prisma.routineReview.findMany({
     where: {
@@ -383,19 +437,23 @@ router.get('/report', authenticateToken, async (req, res) => {
       routineWeeklyReport[currentDate.toISOString().split('T')[0]] = status;
     }
   }
-
+  */
+  // const response = {
+  //   current: {
+  //     completed: lastWeekCompleted,
+  //     failed: lastWeekFailed,
+  //     passed: lastWeekSkipped,
+  //   },
+  //   past: {
+  //     progress: twoWeeksAgoAchievementRate.toFixed(2) + '%',
+  //   },
+  //   maxFailedRoutine: maxFailedRoutine ? maxFailedRoutine : {},
+  //   routineWeeklyReport: routineWeeklyReport,
+  // };
   const response = {
-    current: {
-      completed: lastWeekCompleted,
-      failed: lastWeekFailed,
-      passed: lastWeekSkipped,
-    },
-    past: {
-      progress: twoWeeksAgoAchievementRate.toFixed(2) + '%',
-    },
-    maxFailedRoutine: maxFailedRoutine ? maxFailedRoutine : {},
-    routineWeeklyReport: routineWeeklyReport,
-  };
+    lastWeekStatuses,
+    twoWeeksAgoStatuses 
+  }
 
   res.json(response);
 });
@@ -412,7 +470,7 @@ router.get('/test', authenticateToken, async (req, res) => {
  * 
  * @param {Int} routineId
  * @param {Date} date 
- * @returns {string} status 완료됨, 건너뜀, 실패함, 일정없음, 삭제됨, 생성되지않음
+ * @returns {Promise<string>} status 완료됨, 건너뜀, 실패함, 일정없음, 삭제됨, 생성되지않음
  */
 const getRoutineStatusAt = async (routineId, date) => {
   const nowDate = new Date();
