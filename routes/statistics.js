@@ -1,7 +1,7 @@
 import express from 'express';
 import prisma from '../prisma/prismaClient.js';
 import { authenticateToken } from '../utils/authMiddleware.js';
-import { getDatesBetween, getMaxStreak, getOnlyDate } from '../utils/statisticsUtils.js';
+import { getDatesBetween, getLastWeekFrom, getMaxStreak, getOnlyDate } from '../utils/statisticsUtils.js';
 
 const router = express.Router();
 
@@ -247,19 +247,9 @@ router.get('/report', authenticateToken, async (req, res) => {
   const today = new Date();
 
   // TODO: 시간을 23시 59분 59초 999분으로 설정해야되는지 여부
-  const lastWeekEnd = new Date(today);
-  lastWeekEnd.setDate(today.getDate() - today.getDay());
-  lastWeekEnd.setUTCHours(23, 59, 59, 999);
-  const lastWeekStart = new Date(lastWeekEnd);
-  lastWeekStart.setDate(lastWeekEnd.getDate() - 7);
-  lastWeekStart.setUTCHours(0, 0, 0, 0);
+  const {lastWeekEnd, lastWeekStart} = getLastWeekFrom(today);
 
-  const twoWeeksAgoEnd = new Date(lastWeekStart);
-  twoWeeksAgoEnd.setDate(lastWeekStart.getDate());
-  twoWeeksAgoEnd.setUTCHours(23, 59, 59, 999);
-  const twoWeeksAgoStart = new Date(twoWeeksAgoEnd);
-  twoWeeksAgoStart.setDate(twoWeeksAgoEnd.getDate() - 7);
-  twoWeeksAgoStart.setUTCHours(0, 0, 0, 0);
+  const {lastWeekEnd: twoWeeksAgoEnd, lastWeekStart: twoWeeksAgoStart} = getLastWeekFrom(lastWeekStart);
 
   // 해당 주에 유효한 모든 루틴들을 가져온다.
   // 아니다 유저의 모든 루틴을 가져온다.
@@ -386,10 +376,6 @@ router.get('/report', authenticateToken, async (req, res) => {
     maxFailedRoutineLastWeek: maxFailedRoutine ? maxFailedRoutine : {},
     routineWeeklyReport: routineWeeklyReport,
   };
-  // const response = {
-  //   lastWeekStatuses,
-  //   twoWeeksAgoStatuses 
-  // }
 
   res.json(response);
 });
@@ -406,12 +392,7 @@ router.get('/report-details', authenticateToken, async (req, res) => {
   const today = new Date();
 
   // TODO: 시간을 23시 59분 59초 999분으로 설정해야되는지 여부
-  const lastWeekEnd = new Date(today);
-  lastWeekEnd.setDate(today.getDate() - today.getDay());
-  lastWeekEnd.setUTCHours(23, 59, 59, 999);
-  const lastWeekStart = new Date(lastWeekEnd);
-  lastWeekStart.setDate(lastWeekEnd.getDate() - 7);
-  lastWeekStart.setUTCHours(0, 0, 0, 0);
+  const {lastWeekEnd, lastWeekStart} = getLastWeekFrom(today);
   const routines = await prisma.routine.findMany({
     where: {
       userId: userId,

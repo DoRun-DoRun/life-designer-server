@@ -67,6 +67,21 @@ const getSeconds = (date) => date.getHours() * 3600 + date.getMinutes * 60 + dat
 /**
  * 
  * @param {Date} date 
+ * @returns {{lastWeekEnd: Date, lastWeekStart: Date}}
+ */
+export const getLastWeekFrom = (date) => {
+	const lastWeekEnd = new Date(date);
+	lastWeekEnd.setDate(date.getDate() - date.getDay());
+	lastWeekEnd.setUTCSeconds(23, 59, 59, 999);
+	const lastWeekStart = new Date(lastWeekEnd);
+	lastWeekStart.setDate(lastWeekEnd.getDate() - 7);
+	lastWeekStart.setUTCHours(0, 0, 0, 0);
+	return {lastWeekEnd, lastWeekStart};
+}
+
+/**
+ * 
+ * @param {Date} date 
  * @returns 날짜를 반환합니다. 'yyyy-mm-dd'
  */
 export const getOnlyDate = (date) => date.toISOString().split('T')[0];
