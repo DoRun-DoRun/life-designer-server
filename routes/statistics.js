@@ -394,6 +394,66 @@ router.get('/report', authenticateToken, async (req, res) => {
   res.json(response);
 });
 
+/**
+ * 지난주 루틴 리스트를 출력한다.
+ * 삭제된 루틴도 포함되며 각 날짜별로 해당 루틴이 수행되었는지 표기한다.
+ */
+router.get('/report-details', authenticateToken, async (req, res) => {
+  const userId = req.user.id;
+
+  // TODO: Refactoring - getRoutinesBetweenDates, getLastWeekFrom
+  // DB가 without timezone이기 때문에 보정 필요?
+  const today = new Date();
+
+  // TODO: 시간을 23시 59분 59초 999분으로 설정해야되는지 여부
+  const lastWeekEnd = new Date(today);
+  lastWeekEnd.setDate(today.getDate() - today.getDay());
+  lastWeekEnd.setUTCHours(23, 59, 59, 999);
+  const lastWeekStart = new Date(lastWeekEnd);
+  lastWeekStart.setDate(lastWeekEnd.getDate() - 7);
+  lastWeekStart.setUTCHours(0, 0, 0, 0);
+  const routines = await prisma.routine.findMany({
+    where: {
+      userId: userId,
+      createdAt: {
+        lte: lastWeekEnd
+      },
+      OR: [
+        {
+          deletedAt: null
+        },
+        {
+          deletedAt: {
+            gte: lastWeekStart
+          }
+        }
+      ]
+    }
+  });
+  // 루틴 id별 object 생성, id별로 일 주일 동안의 status 표기
+  for(let i = 0; i < routines.length; i++) {
+    const routine = routines[i];
+    routines[i]['status'] = {};
+    let currentDate = new Date(lastWeekStart);
+    while(currentDate < lastWeekEnd) {
+      routines[i]['status'][getOnlyDate(currentDate)] = 0
+      currentDate.setDate(currentDate.getDate() + 1); // next
+    }
+  }
+  let currentDate = new Date(lastWeekStart);
+  while(currentDate < lastWeekEnd) {
+    for(let i = 0; i < routines.length; i++) {
+      const routine = routines[i];
+      const status = await getRoutineStatusAt(routine.id, currentDate);
+      if(routines[i]['status'][getOnlyDate(currentDate)] !== undefined) {
+        routines[i]['status'][getOnlyDate(currentDate)] = status
+      }
+    }
+    currentDate.setDate(currentDate.getDate() + 1); // next
+  }
+  res.json(routines);
+});
+
 router.get('/test', authenticateToken, async (req, res) => {
   const {year, month, date} = req.query;
   const d = new Date();
