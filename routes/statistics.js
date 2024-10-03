@@ -326,6 +326,54 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
 });
 
 /**
+ * 
+ */
+router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
+  const {month, year} = req.query;
+  const routineId = +req.params.id;
+  if(!month || !year || !routineId) {
+    return res.status(400).json({error: 'month와 year 파라미터가 필요합니다.'});
+  }
+
+  const reviews = await prisma.routineReview.findMany({
+    where: {
+      routineId: routineId,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    }
+  });
+  const reviewDates = Object.fromEntries(
+    reviews.map(review => [getOnlyDate(review.createdAt), review]
+  ));
+  console.log("!!!!")
+  console.log(reviews)
+  console.log(reviewDates)
+  
+  const endDate = new Date(year, month, 0);
+  const today = new Date();
+
+  const response = {}
+
+  for(let day = 1; day <= endDate.getDate(); day++) {
+    const currentDate = new Date(year, month - 1, day);
+    const status = await getRoutineStatusAt(routineId, currentDate);
+    // console.log(routineId, currentDate, status)
+    const currentDateString = getOnlyDate(currentDate);
+    const obj = {status};
+    obj['routineReview'] = reviewDates[currentDateString];
+    response[day] = obj;
+    console.log(day, status);
+    if(currentDate > today) {
+      console.log(currentDate, today);
+      break;
+    }
+  }
+  console.log("!!!: ", endDate.getDate(), endDate);
+  res.json(response);
+});
+
+/**
  * 주간 루틴 성과 보고서 조회
  * 지난 주와 지지난 주의 루틴 성과를 비교 분석하여 보고서를 제공합니다. 주별 성과와 가장 많이 실패한 루틴에 대한 주간 보고서를 포함합니다.
  */
