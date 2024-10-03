@@ -74,7 +74,7 @@ router.get('/', authenticateToken, async (req, res) => {
       actionDates.push(...getDatesBetween(routine, createdAt, updatedAt));
     });
 
-    const uniqueActionDates = [...new Set(actionDates)].reverse();
+    const uniqueActionDates = [...new Set(actionDates)].sort().reverse();
     uniqueDates;
     const minLength = Math.min(uniqueActionDates.length, uniqueDates.length);
     let currentStreak = 0;
