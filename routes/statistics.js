@@ -346,10 +346,6 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
   const reviewDates = Object.fromEntries(
     reviews.map(review => [getOnlyDate(review.createdAt), review]
   ));
-  console.log("!!!!")
-  console.log(reviews)
-  console.log(reviewDates)
-  
   const endDate = new Date(year, month, 0);
   const today = new Date();
 
@@ -358,18 +354,15 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
   for(let day = 1; day <= endDate.getDate(); day++) {
     const currentDate = new Date(year, month - 1, day);
     const status = await getRoutineStatusAt(routineId, currentDate);
-    // console.log(routineId, currentDate, status)
     const currentDateString = getOnlyDate(currentDate);
     const obj = {status};
     obj['routineReview'] = reviewDates[currentDateString];
     response[day] = obj;
-    console.log(day, status);
     if(currentDate > today) {
-      console.log(currentDate, today);
       break;
     }
   }
-  console.log("!!!: ", endDate.getDate(), endDate);
+  
   res.json(response);
 });
 
@@ -425,7 +418,6 @@ router.get('/report', authenticateToken, async (req, res) => {
       } else {
         maxFailedRoutineIds[routine.id]++;
       }
-      console.log(currentDate, status);
       if(twoWeeksAgoStatuses[status] !== undefined) {
         twoWeeksAgoStatuses[status]++;
       }
