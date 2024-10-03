@@ -237,6 +237,95 @@ router.get('/calendar', authenticateToken, async (req, res) => {
 });
 
 /**
+ * 해당 루틴만을 이용해 연속 수행일, 최고 연속 수행일, 누적 루틴 수행일을 계산한다.
+ */
+router.get('/routine/:id', authenticateToken, async (req, res) => {
+  try {
+    // 루틴을 가져옵니다.
+    const routine = await prisma.routine.findFirst({
+      where: {
+        userId: req.user.id,
+        id: +req.params.id
+      }
+    });
+
+    // 루틴이 존재하지 않으면 에러를 반환합니다.
+    if(routine === null) {
+      res.status(400).json({msg: 'There\'s no routine'});
+      return;
+    }
+    
+    const routineId = +req.params.id;
+
+    // 루틴에 해당하는 가상 루틴을 가져옵니다.
+    const virtualRoutines = await prisma.virtualRoutine.findMany({
+      where: {
+        routineId: routineId
+      }
+    })
+
+    // 루틴에 해당하는 리뷰를 전부 가져옵니다.
+    const reviews = await prisma.routineReview.findMany({
+      where: {
+        routineId: routineId,
+      }, orderBy: {
+        createdAt: 'desc',
+      }
+    });
+    const response = {
+      maxStreak: 0,
+      currentStreak: 0,
+      totalStreak: 0
+    };
+
+    // 수행한 적이 없다면 모두 0을 반환
+    if(reviews.length == 0) {
+      res.json(response);
+      return;
+    }
+
+    // 수행한 날의 루틴을 전부 가져옵니다.
+    const uniqueDates = [
+      ...new Set(
+        reviews.map(
+          review => getOnlyDate(review.createdAt)
+        )
+      )
+    ];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setUTCHours(23, 59, 59, 999);
+    // 수행 가능한 날짜 변수
+    const actionDates = [...getDatesBetween(routine, routine.updatedAt, routine.deletedAt ?? yesterday)];
+    
+    virtualRoutines.forEach(routine => {
+      const {createdAt, updatedAt} = routine;
+      actionDates.push(...getDatesBetween(routine, createdAt, updatedAt));
+    });
+
+    const uniqueActionDates = [...new Set(actionDates)].sort().reverse();
+    const minLength = Math.min(uniqueActionDates.length, uniqueDates.length);
+    let currentStreak = 0;
+    for(let i = 0; i < minLength; i++) {
+      if(uniqueActionDates[i] !== uniqueDates[i]) {
+        break;
+      }
+      currentStreak++;
+    }
+    const recentStreak = currentStreak;
+    const maxStreak = getMaxStreak(uniqueActionDates, uniqueDates);
+    response.currentStreak = recentStreak;
+    response.maxStreak = maxStreak;
+    response.totalStreak = uniqueDates.length;
+
+    res.json(response);
+  } catch(error) {
+    console.error('Failed to fetch /statistics/routine/:id :', error);
+    res.status(500).json({ error: 'Failed to fetch /statistics/routine/:id' });
+  }
+});
+
+/**
  * 주간 루틴 성과 보고서 조회
  * 지난 주와 지지난 주의 루틴 성과를 비교 분석하여 보고서를 제공합니다. 주별 성과와 가장 많이 실패한 루틴에 대한 주간 보고서를 포함합니다.
  */
@@ -444,7 +533,7 @@ router.get('/test', authenticateToken, async (req, res) => {
 })
 
 /**
- * 
+ * 루틴 아이디로 해당일의 상태를 가져온다. 과거 수정하기 전 상태도 반영된다.
  * @param {Int} routineId
  * @param {Date} date 
  * @returns {Promise<string>} status 완료됨, 건너뜀, 실패함, 일정없음, 삭제됨, 생성되지않음
@@ -552,5 +641,14 @@ const getRoutineStatusAt = async (routineId, date) => {
   if(isSkipped) return "건너뜀";
   return '완료됨';
 }
+
+/**
+ * 루틴 혹은 가상 루틴으로 시행해야할 DatesString들을 뽑아서 최신순으로 정렬합니다.
+ * @param {import('@prisma/client').Routine[] | import('@prisma/client').VirtualRoutine[]} routines 
+ */
+const getDatesFromRoutines = (routines) => {
+  
+}
+
 
 export default router;
