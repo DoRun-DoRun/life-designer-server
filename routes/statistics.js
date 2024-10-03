@@ -61,7 +61,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(23, 59, 59, 999);
+    yesterday.setUTCHours(23, 59, 59, 999);
 
     const actionDates = [];
     allRoutines.forEach(routine => {
