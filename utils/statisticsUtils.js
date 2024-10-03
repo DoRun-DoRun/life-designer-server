@@ -1,8 +1,9 @@
 /**
- * 
+ * 루틴에 대해서 두 시점 사이의 유효한 날짜들을 반환합니다.
  * @param {import("@prisma/client").Routine} routine 
  * @param {Date} startAt 
  * @param {Date} endAt 
+ * @returns {string[]} ['2024-01-01', ...] 형식입니다.
  */
 export function getDatesBetween(routine, startAt, endAt) {
     const actionDates = [];
@@ -31,7 +32,7 @@ export function getDatesBetween(routine, startAt, endAt) {
 }
 
 /**
- * 
+ * 두 배열의 겹치는 최대 연속 구간의 길이를 반환합니다.
  * @param {*[]} arr 
  * @param {*[]} brr 
  * @returns maxStreak
@@ -59,8 +60,9 @@ export function getMaxStreak(arr, brr) {
 
 
 /**
- * 
+ * Date형식의 0시 0분 0초로부터 몇 초가 지났는지 반환합니다.
  * @param {Date} date 
+ * @returns {number} 초를 반환합니다.
  */
 const getSeconds = (date) => date.getHours() * 3600 + date.getMinutes * 60 + date.getSeconds();
 
