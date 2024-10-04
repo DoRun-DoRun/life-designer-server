@@ -11,11 +11,13 @@ const router = express.Router();
 
 router.post('/', async (req, res, next) => {
   const { email, authProvider } = req.body;
+  console.log(email);
 
   try {
     let user = await prisma.user.findUnique({
       where: { email, authProvider },
     });
+    console.log(user);
 
     if (user && user.memberStatus === MemberStatus.Delete) {
       await prisma.routineReview.deleteMany({ where: { userId: user.id } });
@@ -45,9 +47,13 @@ router.post('/', async (req, res, next) => {
 });
 
 router.get('/', authenticateToken, (req, res, next) => {
+  console.log('User');
   try {
     if (!req.user) {
       throw new Error('User not found');
+    }
+    if (req.user.MemberStatus == MemberStatus.Delete) {
+      throw new Error('User Deleted');
     }
     res.json(req.user);
   } catch (error) {
