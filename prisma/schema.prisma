@@ -34,6 +34,7 @@ model Routine {
   updatedAt        DateTime         @updatedAt
   startTime        Int
   notificationTime Int?
+  repeatDays       Boolean[]
   deletedAt        DateTime?
   isDeleted        Boolean          @default(false)
   user             User             @relation(fields: [userId], references: [id])
