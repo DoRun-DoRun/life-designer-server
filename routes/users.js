@@ -55,12 +55,12 @@ router.get('/', authenticateToken, (req, res, next) => {
 });
 
 router.put('/', authenticateToken, async (req, res) => {
-  const { name, age, job, challenges, gender } = req.body;
+  const { name, age, job, challenges, gender, memberStatus } = req.body;
 
   try {
     const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
-      data: { name, age, job, challenges, gender },
+      data: { name, age, job, challenges, gender, memberStatus },
     });
     res.json(updatedUser);
   } catch (error) {
