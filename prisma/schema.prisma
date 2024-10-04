@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -16,17 +10,17 @@ datasource db {
 model User {
   id              Int             @id @default(autoincrement())
   email           String          @unique
-  authProvider    AuthProvider
   memberStatus    MemberStatus
   name            String?
   age             String?
   job             String?
-  challenges      String[]
-  gender          String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   deletedAt       DateTime?
   lastLoginAt     DateTime?
+  authProvider    AuthProvider
+  gender          String?
+  challenges      String[]
   routines        Routine[]
   routineReviews  RoutineReview[]
   userPreferences UserPreference?
@@ -36,8 +30,9 @@ model Routine {
   id               Int              @id @default(autoincrement())
   userId           Int
   goal             String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
   startTime        Int
-  repeatDays       Boolean[]
   notificationTime Int?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
@@ -52,7 +47,7 @@ model Routine {
 model VirtualRoutine {
   id         Int       @id @default(autoincrement())
   routineId  Int
-  startTime  Int
+  startTime  Int?
   createdAt  DateTime
   updatedAt  DateTime
   repeatDays Boolean[]
@@ -63,14 +58,14 @@ model SubRoutine {
   id                Int                @id @default(autoincrement())
   routineId         Int
   goal              String
-  duration          Int
   emoji             String
-  isDeleted         Boolean            @default(false)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  duration          Int
+  isDeleted         Boolean            @default(false)
+  index             Int
   routine           Routine            @relation(fields: [routineId], references: [id], onDelete: Cascade)
   subRoutineReviews SubRoutineReview[]
-  index             Int
 }
 
 model RoutineReview {
@@ -81,6 +76,7 @@ model RoutineReview {
   comments          String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+  currentStreak     Int                @default(1)
   routine           Routine            @relation(fields: [routineId], references: [id], onDelete: Cascade)
   user              User               @relation(fields: [userId], references: [id])
   subRoutineReviews SubRoutineReview[]
@@ -120,11 +116,6 @@ enum MemberStatus {
   Onboarding
   Delete
 }
-
-// enum Gender {
-//   Male
-//   Female
-// }
 
 enum OverallRating {
   Difficult

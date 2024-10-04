@@ -20,8 +20,7 @@ router.post('/', async (req, res, next) => {
     console.log(user);
 
     if (user && user.memberStatus === MemberStatus.Delete) {
-      console.log('DELETED');
-
+      await prisma.routineReview.deleteMany({ where: { userId: user.id } });
       await prisma.routine.deleteMany({ where: { userId: user.id } });
       await prisma.user.delete({ where: { id: user.id } });
       user = null;
