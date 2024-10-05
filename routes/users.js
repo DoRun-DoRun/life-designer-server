@@ -11,13 +11,16 @@ const router = express.Router();
 
 router.post('/', async (req, res, next) => {
   const { email, authProvider } = req.body;
+  console.log(email);
 
   try {
     let user = await prisma.user.findUnique({
       where: { email, authProvider },
     });
+    console.log(user);
 
     if (user && user.memberStatus === MemberStatus.Delete) {
+      await prisma.routineReview.deleteMany({ where: { userId: user.id } });
       await prisma.routine.deleteMany({ where: { userId: user.id } });
       await prisma.user.delete({ where: { id: user.id } });
       user = null;
@@ -44,9 +47,13 @@ router.post('/', async (req, res, next) => {
 });
 
 router.get('/', authenticateToken, (req, res, next) => {
+  console.log('User');
   try {
     if (!req.user) {
       throw new Error('User not found');
+    }
+    if (req.user.MemberStatus == MemberStatus.Delete) {
+      throw new Error('User Deleted');
     }
     res.json(req.user);
   } catch (error) {
@@ -55,12 +62,12 @@ router.get('/', authenticateToken, (req, res, next) => {
 });
 
 router.put('/', authenticateToken, async (req, res) => {
-  const { name, age, job, challenges, gender } = req.body;
+  const { name, age, job, challenges, gender, memberStatus } = req.body;
 
   try {
     const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
-      data: { name, age, job, challenges, gender },
+      data: { name, age, job, challenges, gender, memberStatus },
     });
     res.json(updatedUser);
   } catch (error) {

@@ -38,18 +38,18 @@ model Routine {
   deletedAt        DateTime?
   isDeleted        Boolean          @default(false)
   user             User             @relation(fields: [userId], references: [id])
-  routineReviews   RoutineReview[]
   subRoutines      SubRoutine[]
+  routineReviews   RoutineReview[]
   virtualRoutines  VirtualRoutine[]
 }
 
 model VirtualRoutine {
   id         Int       @id @default(autoincrement())
   routineId  Int
+  startTime  Int?
   createdAt  DateTime
   updatedAt  DateTime
   repeatDays Boolean[]
-  startTime  Int?
   routine    Routine   @relation(fields: [routineId], references: [id], onDelete: Cascade)
 }
 
@@ -107,6 +107,7 @@ enum AuthProvider {
   Kakao
   Google
   Apple
+  Guest
 }
 
 enum MemberStatus {
