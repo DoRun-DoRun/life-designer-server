@@ -291,8 +291,8 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
     });
     const response = {
       maxStreak: 0,
-      currentStreak: 0,
-      totalStreak: 0,
+      recentStreak: 0,
+      totalProcessDays: 0,
     };
 
     // 수행한 적이 없다면 모두 0을 반환
@@ -333,9 +333,9 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
     }
     const recentStreak = currentStreak;
     const maxStreak = getMaxStreak(uniqueActionDates, uniqueDates);
-    response.currentStreak = recentStreak;
+    response.recentStreak = recentStreak;
     response.maxStreak = maxStreak;
-    response.totalStreak = uniqueDates.length;
+    response.totalProcessDays = uniqueDates.length;
 
     res.json(response);
   } catch (error) {
@@ -351,23 +351,25 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
 router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
   const { month, year } = req.query;
   const routineId = +req.params.id;
-  const userId = req.user.id
-  if(!month || !year || !routineId) {
-    return res.status(400).json({error: 'month와 year 파라미터가 필요합니다.'});
+  const userId = req.user.id;
+  if (!month || !year || !routineId) {
+    return res
+      .status(400)
+      .json({ error: 'month와 year 파라미터가 필요합니다.' });
   }
 
-  const startDate = new Date(year, month -1, 1);
+  const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 0);
   const today = new Date();
 
   const routine = await prisma.routine.findFirst({
     where: {
       userId: userId,
-      id: routineId
-    }
+      id: routineId,
+    },
   });
-  if(routine === null) {
-    return res.status(401).json({error: 'Unauthorized'});
+  if (routine === null) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const reviews = await prisma.routineReview.findMany({
@@ -382,51 +384,54 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
 
   const subRoutineReviews = await prisma.subRoutineReview.findMany({
     where: {
-      OR: [
-        ...reviews.map(review => ({reviewId: review.id}))
-      ],
+      OR: [...reviews.map((review) => ({ reviewId: review.id }))],
       createdAt: {
         gte: startDate,
-        lte: endDate
-      }
-    }
-  })
+        lte: endDate,
+      },
+    },
+  });
   console.log(subRoutineReviews);
   const subRoutines = await prisma.subRoutine.findMany({
     where: {
-      OR: [
-        ...subRoutineReviews.map(review => ({id: review.subRoutineId}))
-      ]
-    }
-  })
+      OR: [...subRoutineReviews.map((review) => ({ id: review.subRoutineId }))],
+    },
+  });
   console.log(subRoutines);
   const spentTimes = subRoutines.reduce((acc, subRoutine) => {
     acc[subRoutine.id] = {
-      timeSpent: 0, ... subRoutine
-    }
-    return acc
+      timeSpent: 0,
+      ...subRoutine,
+    };
+    return acc;
   }, {});
 
   const subRoutineReviewsWithDates = Object.fromEntries(
-    subRoutineReviews.map(subRoutine => [getOnlyDate(subRoutine.createdAt), subRoutine])
+    subRoutineReviews.map((subRoutine) => [
+      getOnlyDate(subRoutine.createdAt),
+      subRoutine,
+    ])
   );
-  console.log("!!![spentTimes]: ", spentTimes);
-  const subRoutineReviewDetails = subRoutineReviews.reduce((acc,subRoutineReview)=>{
-    acc[subRoutineReview.subRoutineId].timeSpent += subRoutineReview.timeSpent;
-    return acc
-  },spentTimes);
+  console.log('!!![spentTimes]: ', spentTimes);
+  const subRoutineReviewDetails = subRoutineReviews.reduce(
+    (acc, subRoutineReview) => {
+      acc[subRoutineReview.subRoutineId].timeSpent +=
+        subRoutineReview.timeSpent;
+      return acc;
+    },
+    spentTimes
+  );
   let totalTimeSpent = 0;
-  for(let key in subRoutineReviewDetails) {
+  for (let key in subRoutineReviewDetails) {
     const obj = subRoutineReviewDetails[key];
     totalTimeSpent += obj.timeSpent;
   }
-  
 
   const reviewDates = Object.fromEntries(
-    reviews.map(review => [getOnlyDate(review.createdAt), review]
-  ));
+    reviews.map((review) => [getOnlyDate(review.createdAt), review])
+  );
 
-  const response = { };
+  const response = {};
 
   for (let day = 1; day <= endDate.getDate(); day++) {
     const currentDate = new Date(year, month - 1, day);
@@ -434,21 +439,27 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
     const currentDateString = getOnlyDate(currentDate);
     const obj = { status };
     obj['routineReview'] = reviewDates[currentDateString];
-    if(reviewDates[currentDateString]) {
+    if (reviewDates[currentDateString]) {
       // 해당일 특정 루틴. 서브 루틴들에 대해서 시간합과
-      const details = subRoutines.map(subRoutine => ({...subRoutine}));
-      details.map(detail => detail["timeSpent"] = 0);
-      for(const subRoutineReviewKey in subRoutineReviewsWithDates) {
-        const subRoutineReview = subRoutineReviewsWithDates[subRoutineReviewKey];
-        const index = details.findIndex((detail)=>detail.id === subRoutineReview.id)
-        if(details[index]) {
-          details[index]["timeSpent"] += subRoutineReview.timeSpent;
+      const details = subRoutines.map((subRoutine) => ({ ...subRoutine }));
+      details.map((detail) => (detail['timeSpent'] = 0));
+      for (const subRoutineReviewKey in subRoutineReviewsWithDates) {
+        const subRoutineReview =
+          subRoutineReviewsWithDates[subRoutineReviewKey];
+        const index = details.findIndex(
+          (detail) => detail.id === subRoutineReview.id
+        );
+        if (details[index]) {
+          details[index]['timeSpent'] += subRoutineReview.timeSpent;
         } else {
-          details[index]["timeSpent"] = subRoutineReview.timeSpent;
+          details[index]['timeSpent'] = subRoutineReview.timeSpent;
         }
       }
-      obj["details"] = details;
-      obj["totalTime"] = details.reduce((acc, detail) => acc+detail['timeSpent'], 0);
+      obj['details'] = details;
+      obj['totalTime'] = details.reduce(
+        (acc, detail) => acc + detail['timeSpent'],
+        0
+      );
     }
 
     response[day] = obj;
