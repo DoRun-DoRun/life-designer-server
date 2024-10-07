@@ -406,6 +406,10 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
     }
     return acc
   }, {});
+
+  const subRoutineReviewsWithDates = Object.fromEntries(
+    subRoutineReviews.map(subRoutine => [getOnlyDate(subRoutine.createdAt), subRoutine])
+  );
   console.log("!!![spentTimes]: ", spentTimes);
   const subRoutineReviewDetails = subRoutineReviews.reduce((acc,subRoutineReview)=>{
     acc[subRoutineReview.subRoutineId].timeSpent += subRoutineReview.timeSpent;
@@ -416,15 +420,13 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
     const obj = subRoutineReviewDetails[key];
     totalTimeSpent += obj.timeSpent;
   }
-  console.log("!!![subRoutineReview]: ", subRoutineReviewDetails);
-  console.log(totalTimeSpent);
   
 
   const reviewDates = Object.fromEntries(
     reviews.map(review => [getOnlyDate(review.createdAt), review]
   ));
 
-  const response = {totalTimeSpent, details: subRoutineReviewDetails};
+  const response = { };
 
   for (let day = 1; day <= endDate.getDate(); day++) {
     const currentDate = new Date(year, month - 1, day);
@@ -432,6 +434,19 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
     const currentDateString = getOnlyDate(currentDate);
     const obj = { status };
     obj['routineReview'] = reviewDates[currentDateString];
+    if(reviewDates[currentDateString]) {
+      // 해당일 특정 루틴. 서브 루틴들에 대해서 시간합과
+      const details = subRoutines.map(subRoutine => ({...subRoutine}));
+      details.map(detail => detail["timeSpent"] = 0);
+      for(const subRoutineReviewKey in subRoutineReviewsWithDates) {
+        const subRoutineReview = subRoutineReviewsWithDates[subRoutineReviewKey];
+        const index = details.findIndex((detail)=>detail.id === subRoutineReview.id)
+        details[index]["timeSpent"] += subRoutineReview.timeSpent;
+      }
+      obj["details"] = details;
+      obj["totalTime"] = details.reduce((acc, detail) => acc+detail['timeSpent'], 0);
+    }
+
     response[day] = obj;
     if (currentDate > today) {
       break;
