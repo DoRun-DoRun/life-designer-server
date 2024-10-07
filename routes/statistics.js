@@ -441,7 +441,11 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
       for(const subRoutineReviewKey in subRoutineReviewsWithDates) {
         const subRoutineReview = subRoutineReviewsWithDates[subRoutineReviewKey];
         const index = details.findIndex((detail)=>detail.id === subRoutineReview.id)
-        details[index]["timeSpent"] += subRoutineReview.timeSpent;
+        if(details[index]) {
+          details[index]["timeSpent"] += subRoutineReview.timeSpent;
+        } else {
+          details[index]["timeSpent"] = subRoutineReview.timeSpent;
+        }
       }
       obj["details"] = details;
       obj["totalTime"] = details.reduce((acc, detail) => acc+detail['timeSpent'], 0);
