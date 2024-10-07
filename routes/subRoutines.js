@@ -1,6 +1,7 @@
 import express from 'express';
 import prisma from '../prisma/prismaClient.js';
 import { authenticateToken } from '../utils/authMiddleware.js';
+import { createSubRoutines } from '../utils/subRoutineUtils.js';
 
 const router = express.Router();
 
@@ -22,33 +23,6 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-async function createSubRoutines(routineId, subRoutines) {
-  const maxIndexSubRoutine = await prisma.subRoutine.findFirst({
-    where: { routineId },
-    orderBy: { index: 'desc' },
-    select: { index: true },
-  });
-
-  const newIndex = maxIndexSubRoutine ? maxIndexSubRoutine.index + 1 : 0;
-
-  const createdSubRoutines = await Promise.all(
-    subRoutines.map(async (subRoutine, index) => {
-      const { goal, duration, emoji } = subRoutine;
-
-      return await prisma.subRoutine.create({
-        data: {
-          routineId,
-          goal,
-          duration,
-          emoji,
-          index: newIndex + index,
-        },
-      });
-    })
-  );
-
-  return createdSubRoutines;
-}
 
 // 서브루틴 수정
 router.put('/:id', authenticateToken, async (req, res) => {
