@@ -67,15 +67,15 @@ router.get('/', authenticateToken, async (req, res) => {
     // routine은 updated 순간 직후, 어제까지의 수행 가능 일자를 가져온다. (수행시작시간 <> 업데이트시간)
     // vroutine은 created 순간 직후, updatedAt 이하의 수행 기능 일자를 가져온다. ()
 
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setUTCHours(23, 59, 59, 999);
+    const today = new Date();
+    // today.setDate(today.getDate() - 1);
+    // today.setUTCHours(23, 59, 59, 999);
 
     const actionDates = [];
     allRoutines.forEach((routine) => {
       const { updatedAt, deletedAt } = routine;
       actionDates.push(
-        ...getDatesBetween(routine, updatedAt, deletedAt ?? yesterday)
+        ...getDatesBetween(routine, updatedAt, deletedAt ?? today)
       );
     });
 
@@ -94,6 +94,8 @@ router.get('/', authenticateToken, async (req, res) => {
       }
       currentStreak++;
     }
+    console.log(uniqueActionDates)
+    console.log(uniqueDates)
     const recentStreak = currentStreak;
 
     // 최대 부분 연속 수열
