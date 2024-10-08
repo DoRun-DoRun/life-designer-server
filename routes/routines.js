@@ -6,6 +6,7 @@ import {
   isRoutineFinishedToday,
   isRoutineIncluded,
 } from '../utils/routineUtils.js';
+import subRoutineRecommended from '../utils/gptUtils.js';
 
 const router = express.Router();
 
@@ -96,7 +97,40 @@ router.get('/detail/:id', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, 
+  /**
+   * 
+   * @param {import('express').NextFunction} next 
+   */
+  async (req, res, next) => {
+    try {
+      const util = req.query.util;
+      const goal = req.body.goal;
+      console.log(req.query)
+      if(util === 'gpt') {
+        console.log('gpt generated')
+        const user = await prisma.user.findFirst({
+          where: {
+            id: 1
+          }
+        })
+        const routineId = 1; // TODO create routine
+        const subRoutines = await subRoutineRecommended(user, goal);
+        console.log(subRoutines);
+        // const subRoutinesSaved = await createSubRoutines(routineId, subRoutines);
+        // console.log(subRoutinesSaved);
+        req.body.subRoutines = subRoutines;
+        next();
+      } else {
+        console.log('no gpt')
+        next();
+      }
+    } catch(error) {
+      console.error("Error: error at /routines");
+      res.status(500).json({error: 'Failed to create routine with gpt'});
+    }
+  },
+  async (req, res) => {
   const { goal, startTime, repeatDays, notificationTime, subRoutines } =
     req.body;
 
@@ -111,9 +145,10 @@ router.post('/', authenticateToken, async (req, res) => {
       },
     });
 
-    await createSubRoutines(newRoutine.id, subRoutines);
+    const subRoutinesSaved = await createSubRoutines(newRoutine.id, subRoutines);
 
-    res.status(204).send();
+    // res.status(204).send();
+    res.json({routine: newRoutine, subRoutines: subRoutinesSaved});
   } catch (error) {
     console.error('Failed to create routine:', error);
     res.status(500).json({ error: 'Failed to create routine' });
@@ -140,6 +175,11 @@ async function createSubRoutines(routineId, subRoutines) {
 
     await prisma.subRoutine.createMany({
       data: subRoutineData,
+    });
+    return await prisma.subRoutine.findMany({
+      where: {
+        routineId
+      }
     });
   }
 }
