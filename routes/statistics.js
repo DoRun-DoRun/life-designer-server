@@ -94,8 +94,8 @@ router.get('/', authenticateToken, async (req, res) => {
       }
       currentStreak++;
     }
-    console.log(uniqueActionDates)
-    console.log(uniqueDates)
+    console.log(uniqueActionDates);
+    console.log(uniqueDates);
     const recentStreak = currentStreak;
 
     // 최대 부분 연속 수열
@@ -441,6 +441,7 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
     const currentDateString = getOnlyDate(currentDate);
     const obj = { status };
     obj['routineReview'] = reviewDates[currentDateString];
+
     if (reviewDates[currentDateString]) {
       // 해당일 특정 루틴. 서브 루틴들에 대해서 시간합과
       const details = subRoutines.map((subRoutine) => ({ ...subRoutine }));
@@ -451,11 +452,15 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
         const index = details.findIndex(
           (detail) => detail.id === subRoutineReview.id
         );
-        if (details[index]) {
+        if (index !== -1) {
           details[index]['timeSpent'] += subRoutineReview.timeSpent;
-        } else {
-          details[index]['timeSpent'] = subRoutineReview.timeSpent;
         }
+
+        // if (details[index]) {
+        //   details[index]['timeSpent'] += subRoutineReview.timeSpent;
+        // } else {
+        //   details[index]['timeSpent'] = subRoutineReview.timeSpent;
+        // }
       }
       obj['details'] = details;
       obj['totalTime'] = details.reduce(
