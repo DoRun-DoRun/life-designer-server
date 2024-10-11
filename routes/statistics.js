@@ -458,9 +458,8 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
       // 해당일 특정 루틴. 서브 루틴들에 대해서 시간합과
       const details = subRoutines.map((subRoutine) => ({ ...subRoutine }));
       details.map((detail) => (detail['timeSpent'] = 0));
-      for (const subRoutineReviewKey in subRoutineReviewsWithDates) {
-        const subRoutineReview =
-          subRoutineReviewsWithDates[subRoutineReviewKey];
+      for (let i = 0; i < subRoutineReviews.length; i++) {
+        const subRoutineReview = subRoutineReviews[i];
         const index = details.findIndex(
           (detail) => detail.id === subRoutineReview.id
         );
