@@ -87,22 +87,35 @@ router.get('/', authenticateToken, async (req, res) => {
     const uniqueActionDates = [...new Set(actionDates)].sort().reverse();
     uniqueDates;
     const minLength = Math.min(uniqueActionDates.length, uniqueDates.length);
-    let currentStreak = 0;
+    let recentStreakDates = [];
     for (let i = 0; i < minLength; i++) {
       if (uniqueActionDates[i] !== uniqueDates[i]) {
         break;
       }
-      currentStreak++;
+      recentStreakDates.push(uniqueActionDates[i])
+      recentStreakDates++;
     }
-    console.log(uniqueActionDates);
-    console.log(uniqueDates);
-    const recentStreak = currentStreak;
+    const recentStreak = recentStreakDates.length;
+
+    // 최근 연속 수행 날짜들에 해당하는 Routine 갯수와 Review 갯수를 가져와서 비교
+    let recentStreakRoutineCount = 0;
+    let recentStreakReviewCount = 0;
+    for(let i = 0; i < recentStreakDates.length; i++) {
+      const currentDateString = recentStreakDates[i];
+      const {routines: r, virtualRoutines: v} = await findAllRoutinesByDate(currentDateString, req.user.id);
+      // TODO: 해당 날짜에 수행 가능한 모든 루틴
+      recentStreakRoutineCount += r.length, v.length
+
+      const rs = await findAllReviewsByDate(currentDateString, req.user.id);
+      recentStreakReviewCount += rs.length;
+    }
 
     // 최대 부분 연속 수열
     const maxStreak = getMaxStreak(uniqueActionDates, uniqueDates);
     const totalProcessDays = uniqueDates.length;
     const recentPerformanceRate = Math.min(
-      (routineReviews.length * 100) / actionDates.length,
+      recentStreakRoutineCount === 0 ? 0 :
+      (recentStreakReviewCount * 100) / recentStreakRoutineCount,
       100
     );
     const response = {
@@ -145,9 +158,9 @@ router.get('/calendar', authenticateToken, async (req, res) => {
       createdAt: {
         gte: startDate,
         lt: new Date(
-          endDate.getFullYear(),
-          endDate.getMonth(),
-          endDate.getDate() + 1
+          endDate.getUTCFullYear(),
+          endDate.getUTCMonth(),
+          endDate.getUTCDate() + 1
         ),
       },
     },
@@ -788,6 +801,78 @@ const getRoutineStatusAt = async (routineId, date) => {
   if (isSkipped) return '건너뜀';
   return '완료됨';
 };
+
+/**
+ * 
+ * @param {string} dateString '20xx-xx-xx'
+ * @param {number} userId userId
+ * @returns {Promise<{routines: import('@prisma/client').Routine[], virtualRoutines: import('@prisma/client').VirtualRoutine[]}>}
+ */
+const findAllRoutinesByDate = async (dateString, userId) => {
+  const currentStartDate = new Date(dateString);
+  const currentEndDate = new Date(dateString);
+  currentEndDate.setHours(23, 59, 99, 999);
+
+  // 하루 중 루틴이 잠시라도 존재하면 가져온다.
+  // TODO: 해당 루틴 시작 시간과 업데이트시간, 삭제 시간은 추후 처리.
+  const routines = await prisma.routine.findMany({
+    where: {
+      userId,
+      updatedAt: {
+        lte: currentEndDate
+      },
+      OR: [
+        {
+          deletedAt: null
+        },
+        {
+          deletedAt: {
+            gte: currentStartDate
+          }
+        }
+      ]
+    }
+  });
+
+  const virtualRoutines = await prisma.virtualRoutine.findMany({
+    where: {
+      OR: [routines.map(routine => ({routineId: routine.id}))],
+      updatedAt: {
+        lte: currentStartDate
+      }
+    }
+  });
+  const currentDay = currentStartDate.getDay();
+  const retRoutines = routines.filter(routine => routine.repeatDays[(currentDay+6)%7] === true);
+  const retVirtualRoutines = virtualRoutines.filter(routine => routine.repeatDays[(currentDay+6)%7] === true);
+  return {
+    routines: retRoutines,
+    virtualRoutines: retVirtualRoutines
+  };
+}
+
+/**
+ * 
+ * @param {string} dateString '20xx-xx-xx'
+ * @param {number} userId userId
+ * @returns {Promise<import('@prisma/client').RoutineReview[]>}
+ */
+const findAllReviewsByDate = async (dateString, userId) => {
+  const currentStartDate = new Date(dateString);
+  const currentEndDate = new Date(dateString);
+  currentEndDate.setHours(23, 59, 99, 999);
+  const reviews = await prisma.routineReview.findMany({
+    where: {
+      userId,
+      createdAt: {
+        gte: currentStartDate,
+        lte: currentEndDate
+      }
+    }
+  });
+  return reviews;
+}
+
 
 /**
  * 루틴 혹은 가상 루틴으로 시행해야할 DatesString들을 뽑아서 최신순으로 정렬합니다.
