@@ -93,7 +93,6 @@ router.get('/', authenticateToken, async (req, res) => {
         break;
       }
       recentStreakDates.push(uniqueActionDates[i])
-      recentStreakDates++;
     }
     const recentStreak = recentStreakDates.length;
 
@@ -836,7 +835,7 @@ const findAllRoutinesByDate = async (dateString, userId) => {
 
   const virtualRoutines = await prisma.virtualRoutine.findMany({
     where: {
-      OR: [routines.map(routine => ({routineId: routine.id}))],
+      OR: [...routines.map(routine => ({routineId: routine.id}))],
       updatedAt: {
         lte: currentStartDate
       }
