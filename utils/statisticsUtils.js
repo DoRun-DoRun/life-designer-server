@@ -9,8 +9,8 @@ export function getDatesBetween(routine, startAt, endAt) {
   const actionDates = [];
   const { repeatDays, startTime } = routine;
 
-  const startAtDateOnly = getOnlyDate(startAt);
-  const endAtDateOnly = getOnlyDate(endAt);
+  const startAtDateOnly = getOnlyUTCDate(startAt);
+  const endAtDateOnly = getOnlyUTCDate(endAt);
 
   const startDayOfWeek = startAt.getDay();
   const startSeconds = getSeconds(startAt);
@@ -20,11 +20,11 @@ export function getDatesBetween(routine, startAt, endAt) {
   }
   let currentDate = new Date(startAt);
   currentDate.setDate(currentDate.getDate() + 1);
-  while (getOnlyDate(currentDate) <= endAtDateOnly) {
+  while (getOnlyUTCDate(currentDate) <= endAtDateOnly) {
     const currentDayOfWeek = currentDate.getDay();
 
     if (repeatDays[(currentDayOfWeek + 6) % 7]) {
-      actionDates.push(getOnlyDate(currentDate));
+      actionDates.push(getOnlyUTCDate(currentDate));
     }
     currentDate.setDate(currentDate.getDate() + 1);
   }
@@ -87,4 +87,4 @@ export const getLastWeekFrom = (date) => {
  * @param {Date} date
  * @returns 날짜를 반환합니다. 'yyyy-mm-dd'
  */
-export const getOnlyDate = (date) => date.toISOString().split('T')[0];
+export const getOnlyUTCDate = (date) => date.toISOString().split('T')[0];

@@ -5,7 +5,7 @@ import {
   getDatesBetween,
   getLastWeekFrom,
   getMaxStreak,
-  getOnlyDate,
+  getOnlyUTCDate,
 } from '../utils/statisticsUtils.js';
 
 const router = express.Router();
@@ -43,7 +43,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const uniqueDates = [
       ...new Set(
         routineReviews.map(
-          (review) => review.createdAt.toISOString().split('T')[0]
+          (review) => getOnlyUTCDate(review.createdAt)
         )
       ),
     ];
@@ -193,8 +193,8 @@ router.get('/calendar', authenticateToken, async (req, res) => {
     // 현재 날짜에 해당하는 모든 리뷰
     const reviewsOnDate = routineReviews.filter((review) => {
       return (
-        review.createdAt.toISOString().split('T')[0] ===
-        currentDate.toISOString().split('T')[0]
+        getOnlyUTCDate(review.createdAt) ===
+        getOnlyUTCDate(currentDate)
       );
     });
 
@@ -305,7 +305,7 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
 
     // 수행한 날의 루틴을 전부 가져옵니다.
     const uniqueDates = [
-      ...new Set(reviews.map((review) => getOnlyDate(review.createdAt))),
+      ...new Set(reviews.map((review) => getOnlyUTCDate(review.createdAt))),
     ];
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
@@ -410,7 +410,7 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
 
   const subRoutineReviewsWithDates = Object.fromEntries(
     subRoutineReviews.map((subRoutine) => [
-      getOnlyDate(subRoutine.createdAt),
+      getOnlyUTCDate(subRoutine.createdAt),
       subRoutine,
     ])
   );
@@ -430,7 +430,7 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
   }
 
   const reviewDates = Object.fromEntries(
-    reviews.map((review) => [getOnlyDate(review.createdAt), review])
+    reviews.map((review) => [getOnlyUTCDate(review.createdAt), review])
   );
 
   const response = {};
@@ -438,7 +438,7 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
   for (let day = 1; day <= endDate.getDate(); day++) {
     const currentDate = new Date(year, month - 1, day);
     const status = await getRoutineStatusAt(routineId, currentDate);
-    const currentDateString = getOnlyDate(currentDate);
+    const currentDateString = getOnlyUTCDate(currentDate);
     const obj = { status };
     obj['routineReview'] = reviewDates[currentDateString];
 
@@ -582,7 +582,7 @@ router.get('/report', authenticateToken, async (req, res) => {
     for (let i = 0; i < routines.length; i++) {
       const routine = routines[i];
       const status = await getRoutineStatusAt(routine.id, currentDate);
-      routineWeeklyReport[getOnlyDate(currentDate)] = status;
+      routineWeeklyReport[getOnlyUTCDate(currentDate)] = status;
     }
     currentDate.setDate(currentDate.getDate() + 1); // next
   }
@@ -648,7 +648,7 @@ router.get('/report-details', authenticateToken, async (req, res) => {
     routines[i]['status'] = {};
     let currentDate = new Date(lastWeekStart);
     while (currentDate < lastWeekEnd) {
-      routines[i]['status'][getOnlyDate(currentDate)] = 0;
+      routines[i]['status'][getOnlyUTCDate(currentDate)] = 0;
       currentDate.setDate(currentDate.getDate() + 1); // next
     }
   }
@@ -657,8 +657,8 @@ router.get('/report-details', authenticateToken, async (req, res) => {
     for (let i = 0; i < routines.length; i++) {
       const routine = routines[i];
       const status = await getRoutineStatusAt(routine.id, currentDate);
-      if (routines[i]['status'][getOnlyDate(currentDate)] !== undefined) {
-        routines[i]['status'][getOnlyDate(currentDate)] = status;
+      if (routines[i]['status'][getOnlyUTCDate(currentDate)] !== undefined) {
+        routines[i]['status'][getOnlyUTCDate(currentDate)] = status;
       }
     }
     currentDate.setDate(currentDate.getDate() + 1); // next
@@ -685,7 +685,7 @@ const getRoutineStatusAt = async (routineId, date) => {
   const currentDate = new Date(date);
   const currentDateStart = new Date(currentDate);
   const currentDateEnd = new Date(
-    getOnlyDate(currentDate) === getOnlyDate(nowDate) ? date : currentDate
+    getOnlyUTCDate(currentDate) === getOnlyUTCDate(nowDate) ? date : currentDate
   );
   currentDateStart.setHours(0, 0, 0, 0);
   currentDateEnd.setHours(23, 59, 59, 999);
