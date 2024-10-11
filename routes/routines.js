@@ -27,10 +27,11 @@ router.get('/', authenticateToken, async (req, res) => {
       id: routine.id,
       startTime: routine.startTime,
       isFinished: isRoutineFinishedToday(routine.routineReviews),
-      isToday: isRoutineIncluded(routine.repeatDays),
+      isToday: isRoutineIncluded(routine.repeatDays) ?? false,
       repeatDays: routine.repeatDays,
       nextAvailableIn: getNextAvailableDay(routine.repeatDays),
       name: routine.goal,
+      notificationTime: routine.notificationTime,
     }));
 
     routineModels.sort((a, b) => {
@@ -109,7 +110,6 @@ router.post(
       const util = req.query.util;
       const goal = req.body.goal;
 
-      console.log(req.query);
       if (util === 'gpt') {
         console.log('gpt generated');
 
@@ -266,7 +266,7 @@ router.put('/', authenticateToken, async (req, res) => {
         goal,
         startTime,
         repeatDays,
-        notificationTime: notificationTime || null,
+        notificationTime,
       },
     });
 
