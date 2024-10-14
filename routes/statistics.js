@@ -5,6 +5,7 @@ import {
   getDatesBetween,
   getLastWeekFrom,
   getMaxStreak,
+  getOnlyKTCDate,
   getOnlyUTCDate,
 } from '../utils/statisticsUtils.js';
 
@@ -420,12 +421,6 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
     return acc;
   }, {});
 
-  const subRoutineReviewsWithDates = Object.fromEntries(
-    subRoutineReviews.map((subRoutine) => [
-      getOnlyUTCDate(subRoutine.createdAt),
-      subRoutine,
-    ])
-  );
   console.log('!!![spentTimes]: ', spentTimes);
   const subRoutineReviewDetails = subRoutineReviews.reduce(
     (acc, subRoutineReview) => {
@@ -442,7 +437,7 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
   }
 
   const reviewDates = Object.fromEntries(
-    reviews.map((review) => [getOnlyUTCDate(review.createdAt), review])
+    reviews.map((review) => [getOnlyKTCDate(review.createdAt), review])
   );
 
   const response = {};
@@ -450,21 +445,21 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
   for (let day = 1; day <= endDate.getDate(); day++) {
     const currentDate = new Date(year, month - 1, day);
     const status = await getRoutineStatusAt(routineId, currentDate);
-    const currentDateString = getOnlyUTCDate(currentDate);
+    const currentDateString = getOnlyKTCDate(currentDate);
     const obj = { status };
     obj['routineReview'] = reviewDates[currentDateString];
 
     if (reviewDates[currentDateString]) {
       // 해당일 특정 루틴. 서브 루틴들에 대해서 시간합과
-      const details = subRoutines.map((subRoutine) => ({ ...subRoutine }));
-      details.map((detail) => (detail['timeSpent'] = 0));
+      const detailSubRoutines = subRoutines.map((subRoutine) => ({ ...subRoutine }));
+      detailSubRoutines.map((detail) => (detail['timeSpent'] = 0));
       for (let i = 0; i < subRoutineReviews.length; i++) {
         const subRoutineReview = subRoutineReviews[i];
-        const index = details.findIndex(
+        const index = detailSubRoutines.findIndex(
           (detail) => detail.id === subRoutineReview.subRoutineId
         );
         if (index !== -1) {
-          details[index]['timeSpent'] += subRoutineReview.timeSpent;
+          detailSubRoutines[index]['timeSpent'] += subRoutineReview.timeSpent;
         }
 
         // if (details[index]) {
@@ -473,8 +468,8 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
         //   details[index]['timeSpent'] = subRoutineReview.timeSpent;
         // }
       }
-      obj['details'] = details;
-      obj['totalTime'] = details.reduce(
+      obj['details'] = detailSubRoutines;
+      obj['totalTime'] = detailSubRoutines.reduce(
         (acc, detail) => acc + detail['timeSpent'],
         0
       );
@@ -696,7 +691,7 @@ const getRoutineStatusAt = async (routineId, date) => {
   const currentDate = new Date(date);
   const currentDateStart = new Date(currentDate);
   const currentDateEnd = new Date(
-    getOnlyUTCDate(currentDate) === getOnlyUTCDate(nowDate) ? date : currentDate
+    getOnlyKTCDate(currentDate) === getOnlyKTCDate(nowDate) ? date : currentDate
   );
   currentDateStart.setHours(0, 0, 0, 0);
   currentDateEnd.setHours(23, 59, 59, 999);

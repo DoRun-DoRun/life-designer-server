@@ -88,3 +88,18 @@ export const getLastWeekFrom = (date) => {
  * @returns 날짜를 반환합니다. 'yyyy-mm-dd'
  */
 export const getOnlyUTCDate = (date) => date.toISOString().split('T')[0];
+
+/**
+ * 
+ * @param {Date} date 
+ * @returns  'yyyy-mm-dd
+ */
+export const getOnlyKTCDate = (date) => {
+  return `${date.getFullYear()}-${zeroPad(date.getMonth(), 2)}-${zeroPad(date.getDate(), 2)}`
+}
+
+function zeroPad(num, places) {
+  let zero = places - num.toString().length + 1;
+  if(zero<0) zero = 0;
+  return Array(zero).join("0") + num.toString();
+}
