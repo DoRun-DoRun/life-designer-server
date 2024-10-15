@@ -1,6 +1,7 @@
 import express from 'express';
 import prisma from '../prisma/prismaClient.js';
 import { authenticateToken } from '../utils/authMiddleware.js';
+import subRoutineRecommended from '../utils/gptUtils.js';
 import {
   getNextAvailableDay,
   isRoutineFinishedToday,
@@ -26,10 +27,11 @@ router.get('/', authenticateToken, async (req, res) => {
       id: routine.id,
       startTime: routine.startTime,
       isFinished: isRoutineFinishedToday(routine.routineReviews),
-      isToday: isRoutineIncluded(routine.repeatDays),
+      isToday: isRoutineIncluded(routine.repeatDays) ?? false,
       repeatDays: routine.repeatDays,
       nextAvailableIn: getNextAvailableDay(routine.repeatDays),
       name: routine.goal,
+      notificationTime: routine.notificationTime,
     }));
 
     routineModels.sort((a, b) => {
@@ -96,29 +98,70 @@ router.get('/detail/:id', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/', authenticateToken, async (req, res) => {
-  const { goal, startTime, repeatDays, notificationTime, subRoutines } =
-    req.body;
+router.post(
+  '/',
+  authenticateToken,
+  /**
+   *
+   * @param {import('express').NextFunction} next
+   */
+  async (req, res, next) => {
+    try {
+      const util = req.query.util;
+      const goal = req.body.goal;
 
-  try {
-    const newRoutine = await prisma.routine.create({
-      data: {
-        userId: req.user.id,
-        goal,
-        startTime,
-        repeatDays,
-        notificationTime: notificationTime || null,
-      },
-    });
+      if (util === 'gpt') {
+        console.log('gpt generated');
 
-    await createSubRoutines(newRoutine.id, subRoutines);
+        const user = await prisma.user.findFirst({
+          where: {
+            id: req.user.id,
+          },
+        });
 
-    res.status(204).send();
-  } catch (error) {
-    console.error('Failed to create routine:', error);
-    res.status(500).json({ error: 'Failed to create routine' });
+        const subRoutines = await subRoutineRecommended(user, goal);
+        console.log(subRoutines);
+        // const subRoutinesSaved = await createSubRoutines(routineId, subRoutines);
+        // console.log(subRoutinesSaved);
+        req.body.subRoutines = subRoutines;
+        next();
+      } else {
+        console.log('no gpt');
+        next();
+      }
+    } catch (error) {
+      console.error('Error: error at /routines');
+      res.status(500).json({ error: 'Failed to create routine with gpt' });
+    }
+  },
+  async (req, res) => {
+    const { goal, startTime, repeatDays, notificationTime, subRoutines } =
+      req.body;
+
+    try {
+      const newRoutine = await prisma.routine.create({
+        data: {
+          userId: req.user.id,
+          goal,
+          startTime,
+          repeatDays,
+          notificationTime: notificationTime || null,
+        },
+      });
+
+      const subRoutinesSaved = await createSubRoutines(
+        newRoutine.id,
+        subRoutines
+      );
+
+      // res.status(204).send();
+      res.json({ routine: newRoutine, subRoutines: subRoutinesSaved });
+    } catch (error) {
+      console.error('Failed to create routine:', error);
+      res.status(500).json({ error: 'Failed to create routine' });
+    }
   }
-});
+);
 
 async function createSubRoutines(routineId, subRoutines) {
   if (subRoutines && Array.isArray(subRoutines) && subRoutines.length > 0) {
@@ -140,6 +183,11 @@ async function createSubRoutines(routineId, subRoutines) {
 
     await prisma.subRoutine.createMany({
       data: subRoutineData,
+    });
+    return await prisma.subRoutine.findMany({
+      where: {
+        routineId,
+      },
     });
   }
 }
@@ -192,7 +240,8 @@ router.put('/', authenticateToken, async (req, res) => {
       where: { id: routineId, isDeleted: false },
     });
 
-    if (!routine) { // 해당 루틴이 없다면
+    if (!routine) {
+      // 해당 루틴이 없다면
       return res.status(404).json({ error: 'Routine not found' });
     }
 
@@ -206,7 +255,7 @@ router.put('/', authenticateToken, async (req, res) => {
     // 사용자의 루틴인 경우에만 업데이트 진행
     // 업데이트할 경우, 기존 루틴은 가상 루틴으로 빼서 만든다. createdAt과 updatedAt을 기존 updatedAt과 이후 updatedAt으로 맞춘다.
     // archivedRoutine이 가상 루틴이다.
-    
+
     const archivedCreatedAt = routine.updatedAt;
     const archivedRepeatDays = [...routine.repeatDays];
     const archivedStartTime = routine.startTime;
@@ -217,7 +266,7 @@ router.put('/', authenticateToken, async (req, res) => {
         goal,
         startTime,
         repeatDays,
-        notificationTime: notificationTime || null,
+        notificationTime,
       },
     });
 
@@ -229,8 +278,8 @@ router.put('/', authenticateToken, async (req, res) => {
         startTime: archivedStartTime,
         createdAt: archivedCreatedAt,
         updatedAt: archivedUpdatedAt,
-        repeatDays: archivedRepeatDays
-      }
+        repeatDays: archivedRepeatDays,
+      },
     });
     // TODO: Transaction
 

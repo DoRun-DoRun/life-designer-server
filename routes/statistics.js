@@ -5,7 +5,8 @@ import {
   getDatesBetween,
   getLastWeekFrom,
   getMaxStreak,
-  getOnlyDate,
+  getOnlyKTCDate,
+  getOnlyUTCDate,
 } from '../utils/statisticsUtils.js';
 
 const router = express.Router();
@@ -43,7 +44,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const uniqueDates = [
       ...new Set(
         routineReviews.map(
-          (review) => review.createdAt.toISOString().split('T')[0]
+          (review) => getOnlyUTCDate(review.createdAt)
         )
       ),
     ];
@@ -67,15 +68,15 @@ router.get('/', authenticateToken, async (req, res) => {
     // routine은 updated 순간 직후, 어제까지의 수행 가능 일자를 가져온다. (수행시작시간 <> 업데이트시간)
     // vroutine은 created 순간 직후, updatedAt 이하의 수행 기능 일자를 가져온다. ()
 
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setUTCHours(23, 59, 59, 999);
+    const today = new Date();
+    // today.setDate(today.getDate() - 1);
+    // today.setUTCHours(23, 59, 59, 999);
 
     const actionDates = [];
     allRoutines.forEach((routine) => {
       const { updatedAt, deletedAt } = routine;
       actionDates.push(
-        ...getDatesBetween(routine, updatedAt, deletedAt ?? yesterday)
+        ...getDatesBetween(routine, updatedAt, deletedAt ?? today)
       );
     });
 
@@ -87,20 +88,34 @@ router.get('/', authenticateToken, async (req, res) => {
     const uniqueActionDates = [...new Set(actionDates)].sort().reverse();
     uniqueDates;
     const minLength = Math.min(uniqueActionDates.length, uniqueDates.length);
-    let currentStreak = 0;
+    let recentStreakDates = [];
     for (let i = 0; i < minLength; i++) {
       if (uniqueActionDates[i] !== uniqueDates[i]) {
         break;
       }
-      currentStreak++;
+      recentStreakDates.push(uniqueActionDates[i])
     }
-    const recentStreak = currentStreak;
+    const recentStreak = recentStreakDates.length;
+
+    // 최근 연속 수행 날짜들에 해당하는 Routine 갯수와 Review 갯수를 가져와서 비교
+    let recentStreakRoutineCount = 0;
+    let recentStreakReviewCount = 0;
+    for(let i = 0; i < recentStreakDates.length; i++) {
+      const currentDateString = recentStreakDates[i];
+      const {routines: r, virtualRoutines: v} = await findAllRoutinesByDate(currentDateString, req.user.id);
+      // TODO: 해당 날짜에 수행 가능한 모든 루틴
+      recentStreakRoutineCount += r.length, v.length
+
+      const rs = await findAllReviewsByDate(currentDateString, req.user.id);
+      recentStreakReviewCount += rs.length;
+    }
 
     // 최대 부분 연속 수열
     const maxStreak = getMaxStreak(uniqueActionDates, uniqueDates);
     const totalProcessDays = uniqueDates.length;
     const recentPerformanceRate = Math.min(
-      (routineReviews.length * 100) / actionDates.length,
+      recentStreakRoutineCount === 0 ? 0 :
+      (recentStreakReviewCount * 100) / recentStreakRoutineCount,
       100
     );
     const response = {
@@ -143,9 +158,9 @@ router.get('/calendar', authenticateToken, async (req, res) => {
       createdAt: {
         gte: startDate,
         lt: new Date(
-          endDate.getFullYear(),
-          endDate.getMonth(),
-          endDate.getDate() + 1
+          endDate.getUTCFullYear(),
+          endDate.getUTCMonth(),
+          endDate.getUTCDate() + 1
         ),
       },
     },
@@ -191,8 +206,8 @@ router.get('/calendar', authenticateToken, async (req, res) => {
     // 현재 날짜에 해당하는 모든 리뷰
     const reviewsOnDate = routineReviews.filter((review) => {
       return (
-        review.createdAt.toISOString().split('T')[0] ===
-        currentDate.toISOString().split('T')[0]
+        getOnlyUTCDate(review.createdAt) ===
+        getOnlyUTCDate(currentDate)
       );
     });
 
@@ -291,8 +306,8 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
     });
     const response = {
       maxStreak: 0,
-      currentStreak: 0,
-      totalStreak: 0,
+      recentStreak: 0,
+      totalProcessDays: 0,
     };
 
     // 수행한 적이 없다면 모두 0을 반환
@@ -303,7 +318,7 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
 
     // 수행한 날의 루틴을 전부 가져옵니다.
     const uniqueDates = [
-      ...new Set(reviews.map((review) => getOnlyDate(review.createdAt))),
+      ...new Set(reviews.map((review) => getOnlyUTCDate(review.createdAt))),
     ];
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
@@ -333,9 +348,9 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
     }
     const recentStreak = currentStreak;
     const maxStreak = getMaxStreak(uniqueActionDates, uniqueDates);
-    response.currentStreak = recentStreak;
+    response.recentStreak = recentStreak;
     response.maxStreak = maxStreak;
-    response.totalStreak = uniqueDates.length;
+    response.totalProcessDays = uniqueDates.length;
 
     res.json(response);
   } catch (error) {
@@ -345,39 +360,121 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
 });
 
 /**
- *
+ * TODO: 세부 루틴 기록 해야함, authenticatioToken 해야함
+ * 해당 월에 대한 모든 세부 루틴(SubRoutineReview)을 모두 가져와서 소비한 시간을 합 연산함.
  */
 router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
   const { month, year } = req.query;
   const routineId = +req.params.id;
+  const userId = req.user.id;
   if (!month || !year || !routineId) {
     return res
       .status(400)
       .json({ error: 'month와 year 파라미터가 필요합니다.' });
   }
 
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0);
+  const today = new Date();
+
+  const routine = await prisma.routine.findFirst({
+    where: {
+      userId: userId,
+      id: routineId,
+    },
+  });
+  if (routine === null) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const reviews = await prisma.routineReview.findMany({
     where: {
+      userId: userId,
       routineId: routineId,
     },
     orderBy: {
       createdAt: 'desc',
     },
   });
-  const reviewDates = Object.fromEntries(
-    reviews.map((review) => [getOnlyDate(review.createdAt), review])
+
+  const subRoutineReviews = await prisma.subRoutineReview.findMany({
+    where: {
+      OR: [...reviews.map((review) => ({ reviewId: review.id }))],
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+    },
+  });
+  console.log(subRoutineReviews);
+  const subRoutines = await prisma.subRoutine.findMany({
+    where: {
+      OR: [...subRoutineReviews.map((review) => ({ id: review.subRoutineId }))],
+    },
+  });
+  console.log(subRoutines);
+  const spentTimes = subRoutines.reduce((acc, subRoutine) => {
+    acc[subRoutine.id] = {
+      timeSpent: 0,
+      ...subRoutine,
+    };
+    return acc;
+  }, {});
+
+  console.log('!!![spentTimes]: ', spentTimes);
+  const subRoutineReviewDetails = subRoutineReviews.reduce(
+    (acc, subRoutineReview) => {
+      acc[subRoutineReview.subRoutineId].timeSpent +=
+        subRoutineReview.timeSpent;
+      return acc;
+    },
+    spentTimes
   );
-  const endDate = new Date(year, month, 0);
-  const today = new Date();
+  let totalTimeSpent = 0;
+  for (let key in subRoutineReviewDetails) {
+    const obj = subRoutineReviewDetails[key];
+    totalTimeSpent += obj.timeSpent;
+  }
+
+  const reviewDates = Object.fromEntries(
+    reviews.map((review) => [getOnlyKTCDate(review.createdAt), review])
+  );
 
   const response = {};
 
   for (let day = 1; day <= endDate.getDate(); day++) {
     const currentDate = new Date(year, month - 1, day);
     const status = await getRoutineStatusAt(routineId, currentDate);
-    const currentDateString = getOnlyDate(currentDate);
+    const currentDateString = getOnlyKTCDate(currentDate);
     const obj = { status };
     obj['routineReview'] = reviewDates[currentDateString];
+
+    if (reviewDates[currentDateString]) {
+      // 해당일 특정 루틴. 서브 루틴들에 대해서 시간합과
+      const detailSubRoutines = subRoutines.map((subRoutine) => ({ ...subRoutine }));
+      detailSubRoutines.map((detail) => (detail['timeSpent'] = 0));
+      for (let i = 0; i < subRoutineReviews.length; i++) {
+        const subRoutineReview = subRoutineReviews[i];
+        const index = detailSubRoutines.findIndex(
+          (detail) => detail.id === subRoutineReview.subRoutineId
+        );
+        if (index !== -1) {
+          detailSubRoutines[index]['timeSpent'] += subRoutineReview.timeSpent;
+        }
+
+        // if (details[index]) {
+        //   details[index]['timeSpent'] += subRoutineReview.timeSpent;
+        // } else {
+        //   details[index]['timeSpent'] = subRoutineReview.timeSpent;
+        // }
+      }
+      obj['details'] = detailSubRoutines;
+      obj['totalTime'] = detailSubRoutines.reduce(
+        (acc, detail) => acc + detail['timeSpent'],
+        0
+      );
+    }
+
     response[day] = obj;
     if (currentDate > today) {
       break;
@@ -491,7 +588,7 @@ router.get('/report', authenticateToken, async (req, res) => {
     for (let i = 0; i < routines.length; i++) {
       const routine = routines[i];
       const status = await getRoutineStatusAt(routine.id, currentDate);
-      routineWeeklyReport[getOnlyDate(currentDate)] = status;
+      routineWeeklyReport[getOnlyUTCDate(currentDate)] = status;
     }
     currentDate.setDate(currentDate.getDate() + 1); // next
   }
@@ -557,7 +654,7 @@ router.get('/report-details', authenticateToken, async (req, res) => {
     routines[i]['status'] = {};
     let currentDate = new Date(lastWeekStart);
     while (currentDate < lastWeekEnd) {
-      routines[i]['status'][getOnlyDate(currentDate)] = 0;
+      routines[i]['status'][getOnlyUTCDate(currentDate)] = 0;
       currentDate.setDate(currentDate.getDate() + 1); // next
     }
   }
@@ -566,8 +663,8 @@ router.get('/report-details', authenticateToken, async (req, res) => {
     for (let i = 0; i < routines.length; i++) {
       const routine = routines[i];
       const status = await getRoutineStatusAt(routine.id, currentDate);
-      if (routines[i]['status'][getOnlyDate(currentDate)] !== undefined) {
-        routines[i]['status'][getOnlyDate(currentDate)] = status;
+      if (routines[i]['status'][getOnlyUTCDate(currentDate)] !== undefined) {
+        routines[i]['status'][getOnlyUTCDate(currentDate)] = status;
       }
     }
     currentDate.setDate(currentDate.getDate() + 1); // next
@@ -594,7 +691,7 @@ const getRoutineStatusAt = async (routineId, date) => {
   const currentDate = new Date(date);
   const currentDateStart = new Date(currentDate);
   const currentDateEnd = new Date(
-    getOnlyDate(currentDate) === getOnlyDate(nowDate) ? date : currentDate
+    getOnlyKTCDate(currentDate) === getOnlyKTCDate(nowDate) ? date : currentDate
   );
   currentDateStart.setHours(0, 0, 0, 0);
   currentDateEnd.setHours(23, 59, 59, 999);
@@ -697,6 +794,78 @@ const getRoutineStatusAt = async (routineId, date) => {
   if (isSkipped) return '건너뜀';
   return '완료됨';
 };
+
+/**
+ * 
+ * @param {string} dateString '20xx-xx-xx'
+ * @param {number} userId userId
+ * @returns {Promise<{routines: import('@prisma/client').Routine[], virtualRoutines: import('@prisma/client').VirtualRoutine[]}>}
+ */
+const findAllRoutinesByDate = async (dateString, userId) => {
+  const currentStartDate = new Date(dateString);
+  const currentEndDate = new Date(dateString);
+  currentEndDate.setHours(23, 59, 99, 999);
+
+  // 하루 중 루틴이 잠시라도 존재하면 가져온다.
+  // TODO: 해당 루틴 시작 시간과 업데이트시간, 삭제 시간은 추후 처리.
+  const routines = await prisma.routine.findMany({
+    where: {
+      userId,
+      updatedAt: {
+        lte: currentEndDate
+      },
+      OR: [
+        {
+          deletedAt: null
+        },
+        {
+          deletedAt: {
+            gte: currentStartDate
+          }
+        }
+      ]
+    }
+  });
+
+  const virtualRoutines = await prisma.virtualRoutine.findMany({
+    where: {
+      OR: [...routines.map(routine => ({routineId: routine.id}))],
+      updatedAt: {
+        lte: currentStartDate
+      }
+    }
+  });
+  const currentDay = currentStartDate.getDay();
+  const retRoutines = routines.filter(routine => routine.repeatDays[(currentDay+6)%7] === true);
+  const retVirtualRoutines = virtualRoutines.filter(routine => routine.repeatDays[(currentDay+6)%7] === true);
+  return {
+    routines: retRoutines,
+    virtualRoutines: retVirtualRoutines
+  };
+}
+
+/**
+ * 
+ * @param {string} dateString '20xx-xx-xx'
+ * @param {number} userId userId
+ * @returns {Promise<import('@prisma/client').RoutineReview[]>}
+ */
+const findAllReviewsByDate = async (dateString, userId) => {
+  const currentStartDate = new Date(dateString);
+  const currentEndDate = new Date(dateString);
+  currentEndDate.setHours(23, 59, 99, 999);
+  const reviews = await prisma.routineReview.findMany({
+    where: {
+      userId,
+      createdAt: {
+        gte: currentStartDate,
+        lte: currentEndDate
+      }
+    }
+  });
+  return reviews;
+}
+
 
 /**
  * 루틴 혹은 가상 루틴으로 시행해야할 DatesString들을 뽑아서 최신순으로 정렬합니다.
