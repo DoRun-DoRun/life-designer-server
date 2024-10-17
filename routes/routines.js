@@ -61,7 +61,7 @@ router.get('/detail/:id', authenticateToken, async (req, res) => {
     const routine = await prisma.routine.findUnique({
       where: { id: routineId, isDeleted: false },
       include: {
-        subRoutines: { orderBy: { index: 'asc' } },
+        subRoutines: { orderBy: { index: 'asc' }, where: { isDeleted: false } },
         routineReviews: true,
       },
     });
@@ -85,12 +85,10 @@ router.get('/detail/:id', authenticateToken, async (req, res) => {
       totalDuration,
       notificationTime: routine.notificationTime,
       repeatDays: routine.repeatDays,
-      subRoutines: routine.subRoutines
-        .filter((subRoutine) => !subRoutine.isDeleted)
-        .map((subRoutine) => ({
-          ...subRoutine,
-          duration: subRoutine.duration,
-        })),
+      subRoutines: routine.subRoutines.map((subRoutine) => ({
+        ...subRoutine,
+        duration: subRoutine.duration,
+      })),
     };
 
     res.json(response);
