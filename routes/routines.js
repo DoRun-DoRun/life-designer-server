@@ -85,10 +85,12 @@ router.get('/detail/:id', authenticateToken, async (req, res) => {
       totalDuration,
       notificationTime: routine.notificationTime,
       repeatDays: routine.repeatDays,
-      subRoutines: routine.subRoutines.map((subRoutine) => ({
-        ...subRoutine,
-        duration: subRoutine.duration,
-      })),
+      subRoutines: routine.subRoutines
+        .filter((subRoutine) => !subRoutine.isDeleted)
+        .map((subRoutine) => ({
+          ...subRoutine,
+          duration: subRoutine.duration,
+        })),
     };
 
     res.json(response);
