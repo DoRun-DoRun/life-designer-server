@@ -195,7 +195,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
     const currentDate = new Date(year, month - 1, day);
 
     // 오늘까지만 반복
-    if (currentDate > today) {
+    if (currentDate => today) {
       break;
     }
 
