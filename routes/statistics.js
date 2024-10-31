@@ -328,17 +328,16 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
 
     // 수행한 날의 루틴을 전부 가져옵니다.
     const uniqueDates = [
-      ...new Set(reviews.map((review) => getOnlyUTCDate(review.createdAt))),
+      ...new Set(reviews.map((review) => getOnlyKTCDate(review.createdAt))),
     ];
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setUTCHours(23, 59, 59, 999);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     // 수행 가능한 날짜 변수
     const actionDates = [
       ...getDatesBetween(
         routine,
         routine.updatedAt,
-        routine.deletedAt ?? yesterday
+        routine.deletedAt ?? today
       ),
     ];
 
