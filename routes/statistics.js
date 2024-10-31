@@ -44,7 +44,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const uniqueDates = [
       ...new Set(
         routineReviews.map(
-          (review) => getOnlyUTCDate(review.createdAt)
+          (review) => getOnlyKTCDate(review.createdAt)
         )
       ),
     ];
@@ -85,10 +85,16 @@ router.get('/', authenticateToken, async (req, res) => {
       actionDates.push(...getDatesBetween(routine, createdAt, updatedAt));
     });
 
-    const uniqueActionDates = [...new Set(actionDates)].sort().reverse();
+    let uniqueActionDates = [...new Set(actionDates)].sort().reverse();
     uniqueDates;
+    if(uniqueActionDates[0] !== uniqueDates[0]) {
+      uniqueActionDates = uniqueActionDates.slice(1);
+    }
     const minLength = Math.min(uniqueActionDates.length, uniqueDates.length);
     let recentStreakDates = [];
+    console.log(uniqueActionDates)
+    console.log(uniqueDates)
+    console.log(routineReviews)
     for (let i = 0; i < minLength; i++) {
       if (uniqueActionDates[i] !== uniqueDates[i]) {
         break;
