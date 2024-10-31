@@ -193,6 +193,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
   // 1일부터 마지막일까지 반복
   for (let day = 1; day <= endDate.getDate(); day++) {
     const currentDate = new Date(year, month - 1, day);
+    const currentDateEnd = new Date(year, month - 1, day+1);
 
     // 오늘까지만 반복
     if (currentDate >= today) {
@@ -211,7 +212,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
     const validRoutinesOnDate = [
       ...routines.filter((routine) => {
         return (
-          new Date(routine.updatedAt) <= currentDate &&
+          new Date(routine.updatedAt) < currentDateEnd &&
           (routine.deletedAt === null ||
             new Date(routine.deletedAt) >= currentDate)
         );
@@ -219,7 +220,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
       ...archivedRoutines.filter((routine) => {
         return (
           new Date(routine.updatedAt) >= currentDate &&
-          new Date(routine.createdAt) <= currentDate
+          new Date(routine.createdAt) < currentDateEnd
         );
       }),
     ];
