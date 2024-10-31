@@ -331,7 +331,6 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
       ...new Set(reviews.map((review) => getOnlyKTCDate(review.createdAt))),
     ];
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
     // 수행 가능한 날짜 변수
     const actionDates = [
       ...getDatesBetween(
@@ -346,9 +345,14 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
       actionDates.push(...getDatesBetween(routine, createdAt, updatedAt));
     });
 
-    const uniqueActionDates = [...new Set(actionDates)].sort().reverse();
+    let uniqueActionDates = [...new Set(actionDates)].sort().reverse();
     const minLength = Math.min(uniqueActionDates.length, uniqueDates.length);
     let currentStreak = 0;
+    if(uniqueActionDates[0] !== uniqueDates[0]) {
+      uniqueActionDates = uniqueActionDates.slice(1);
+    }
+    console.log(uniqueActionDates);
+    console.log(uniqueDates)
     for (let i = 0; i < minLength; i++) {
       if (uniqueActionDates[i] !== uniqueDates[i]) {
         break;
