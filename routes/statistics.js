@@ -195,8 +195,15 @@ router.get('/calendar', authenticateToken, async (req, res) => {
     const currentDate = new Date(year, month - 1, day);
     const currentDateEnd = new Date(year, month - 1, day+1);
 
+    if(currentDate.getDate() === today.getDate()) {
+      currentDate.setHours(
+        today.getHours(),
+        today.getMinutes(),
+        today.getSeconds()
+      );
+    }
     // 오늘까지만 반복
-    if (currentDate >= today) {
+    if (currentDate > today) {
       break;
     }
 
@@ -220,7 +227,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
       ...archivedRoutines.filter((routine) => {
         return (
           new Date(routine.updatedAt) >= currentDate &&
-          new Date(routine.createdAt) < currentDateEnd
+          new Date(routine.createdAt) <= currentDate
         );
       }),
     ];
