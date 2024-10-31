@@ -195,7 +195,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
   let response = {};
 
   // 1일부터 마지막일까지 반복
-  for (let day = 1; day <= endDate.getDate(); day++) {
+  for (let day = 1; day <= endDate.getUTCDate(); day++) {
     const currentDate = new Date(year, month - 1, day);
 
     // 오늘까지만 반복
@@ -442,7 +442,7 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
 
   const response = {};
 
-  for (let day = 1; day <= endDate.getDate(); day++) {
+  for (let day = 1; day <= endDate.getUTCDate(); day++) {
     const currentDate = new Date(year, month - 1, day);
     const status = await getRoutineStatusAt(routineId, currentDate);
     const currentDateString = getOnlyKTCDate(currentDate);
