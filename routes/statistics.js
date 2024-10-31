@@ -212,7 +212,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
     const validRoutinesOnDate = [
       ...routines.filter((routine) => {
         return (
-          new Date(routine.updatedAt) < currentDateEnd &&
+          new Date(routine.updatedAt) <= currentDate &&
           (routine.deletedAt === null ||
             new Date(routine.deletedAt) >= currentDate)
         );
