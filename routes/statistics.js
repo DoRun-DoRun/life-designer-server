@@ -406,6 +406,7 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
   const subRoutines = await prisma.subRoutine.findMany({
     where: {
       OR: [...subRoutineReviews.map((review) => ({ id: review.subRoutineId }))],
+      isDeleted: false
     },
   });
   console.log(subRoutines);
