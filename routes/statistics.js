@@ -157,11 +157,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
       userId: userId,
       createdAt: {
         gte: startDate,
-        lt: new Date(
-          endDate.getUTCFullYear(),
-          endDate.getUTCMonth(),
-          endDate.getUTCDate() + 1
-        ),
+        lt: endDate,
       },
     },
     include: {
@@ -206,8 +202,8 @@ router.get('/calendar', authenticateToken, async (req, res) => {
     // 현재 날짜에 해당하는 모든 리뷰
     const reviewsOnDate = routineReviews.filter((review) => {
       return (
-        getOnlyUTCDate(review.createdAt) ===
-        getOnlyUTCDate(currentDate)
+        getOnlyKTCDate(review.createdAt) ===
+        getOnlyKTCDate(currentDate)
       );
     });
 
