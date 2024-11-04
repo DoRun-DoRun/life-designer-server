@@ -44,7 +44,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const uniqueDates = [
       ...new Set(
         routineReviews.map(
-          (review) => getOnlyUTCDate(review.createdAt)
+          (review) => getOnlyKTCDate(review.createdAt)
         )
       ),
     ];
@@ -85,10 +85,16 @@ router.get('/', authenticateToken, async (req, res) => {
       actionDates.push(...getDatesBetween(routine, createdAt, updatedAt));
     });
 
-    const uniqueActionDates = [...new Set(actionDates)].sort().reverse();
+    let uniqueActionDates = [...new Set(actionDates)].sort().reverse();
     uniqueDates;
+    if(uniqueActionDates[0] !== uniqueDates[0]) {
+      uniqueActionDates = uniqueActionDates.slice(1);
+    }
     const minLength = Math.min(uniqueActionDates.length, uniqueDates.length);
     let recentStreakDates = [];
+    console.log(uniqueActionDates)
+    console.log(uniqueDates)
+    console.log(routineReviews)
     for (let i = 0; i < minLength; i++) {
       if (uniqueActionDates[i] !== uniqueDates[i]) {
         break;
@@ -157,11 +163,7 @@ router.get('/calendar', authenticateToken, async (req, res) => {
       userId: userId,
       createdAt: {
         gte: startDate,
-        lt: new Date(
-          endDate.getUTCFullYear(),
-          endDate.getUTCMonth(),
-          endDate.getUTCDate() + 1
-        ),
+        lt: endDate,
       },
     },
     include: {
@@ -197,7 +199,15 @@ router.get('/calendar', authenticateToken, async (req, res) => {
   // 1일부터 마지막일까지 반복
   for (let day = 1; day <= endDate.getDate(); day++) {
     const currentDate = new Date(year, month - 1, day);
+    const currentDateEnd = new Date(year, month - 1, day+1);
 
+    if(currentDate.getDate() === today.getDate()) {
+      currentDate.setHours(
+        today.getHours(),
+        today.getMinutes(),
+        today.getSeconds()
+      );
+    }
     // 오늘까지만 반복
     if (currentDate > today) {
       break;
@@ -206,8 +216,8 @@ router.get('/calendar', authenticateToken, async (req, res) => {
     // 현재 날짜에 해당하는 모든 리뷰
     const reviewsOnDate = routineReviews.filter((review) => {
       return (
-        getOnlyUTCDate(review.createdAt) ===
-        getOnlyUTCDate(currentDate)
+        getOnlyKTCDate(review.createdAt) ===
+        getOnlyKTCDate(currentDate)
       );
     });
 
@@ -318,17 +328,15 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
 
     // 수행한 날의 루틴을 전부 가져옵니다.
     const uniqueDates = [
-      ...new Set(reviews.map((review) => getOnlyUTCDate(review.createdAt))),
+      ...new Set(reviews.map((review) => getOnlyKTCDate(review.createdAt))),
     ];
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setUTCHours(23, 59, 59, 999);
+    const today = new Date();
     // 수행 가능한 날짜 변수
     const actionDates = [
       ...getDatesBetween(
         routine,
         routine.updatedAt,
-        routine.deletedAt ?? yesterday
+        routine.deletedAt ?? today
       ),
     ];
 
@@ -337,9 +345,14 @@ router.get('/routine/:id', authenticateToken, async (req, res) => {
       actionDates.push(...getDatesBetween(routine, createdAt, updatedAt));
     });
 
-    const uniqueActionDates = [...new Set(actionDates)].sort().reverse();
+    let uniqueActionDates = [...new Set(actionDates)].sort().reverse();
     const minLength = Math.min(uniqueActionDates.length, uniqueDates.length);
     let currentStreak = 0;
+    if(uniqueActionDates[0] !== uniqueDates[0]) {
+      uniqueActionDates = uniqueActionDates.slice(1);
+    }
+    console.log(uniqueActionDates);
+    console.log(uniqueDates)
     for (let i = 0; i < minLength; i++) {
       if (uniqueActionDates[i] !== uniqueDates[i]) {
         break;
@@ -410,6 +423,7 @@ router.get('/routine/:id/calendar', authenticateToken, async (req, res) => {
   const subRoutines = await prisma.subRoutine.findMany({
     where: {
       OR: [...subRoutineReviews.map((review) => ({ id: review.subRoutineId }))],
+      isDeleted: false
     },
   });
   console.log(subRoutines);

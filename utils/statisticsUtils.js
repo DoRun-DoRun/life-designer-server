@@ -95,7 +95,7 @@ export const getOnlyUTCDate = (date) => date.toISOString().split('T')[0];
  * @returns  'yyyy-mm-dd
  */
 export const getOnlyKTCDate = (date) => {
-  return `${date.getFullYear()}-${zeroPad(date.getMonth(), 2)}-${zeroPad(date.getDate(), 2)}`
+  return `${date.getFullYear()}-${zeroPad(date.getMonth()+1, 2)}-${zeroPad(date.getDate(), 2)}`
 }
 
 function zeroPad(num, places) {
