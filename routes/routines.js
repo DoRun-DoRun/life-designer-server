@@ -1,7 +1,7 @@
 import express from 'express';
 import prisma from '../prisma/prismaClient.js';
 import { authenticateToken } from '../utils/authMiddleware.js';
-import subRoutineRecommended from '../utils/gptUtils.js';
+import { subRoutineRecommended } from '../utils/gptUtils.js';
 import {
   getNextAvailableDay,
   isRoutineFinishedToday,
@@ -107,8 +107,10 @@ router.post(
    */
   async (req, res, next) => {
     try {
+      const { goal, habitCategory, actions } = req.body;
       const util = req.query.util;
-      const goal = req.body.goal;
+
+      console.log(req.body);
 
       if (util === 'gpt') {
         console.log('gpt generated');
@@ -119,8 +121,15 @@ router.post(
           },
         });
 
-        const subRoutines = await subRoutineRecommended(user, goal);
+        const subRoutines = await subRoutineRecommended(
+          user,
+          goal,
+          habitCategory,
+          actions
+        );
+
         console.log(subRoutines);
+
         // const subRoutinesSaved = await createSubRoutines(routineId, subRoutines);
         // console.log(subRoutinesSaved);
         req.body.subRoutines = subRoutines;
@@ -184,6 +193,7 @@ async function createSubRoutines(routineId, subRoutines) {
     await prisma.subRoutine.createMany({
       data: subRoutineData,
     });
+
     return await prisma.subRoutine.findMany({
       where: {
         routineId,

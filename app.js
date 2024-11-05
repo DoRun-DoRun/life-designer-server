@@ -5,6 +5,7 @@ import logger from 'morgan';
 import path from 'path';
 
 import debug from 'debug';
+import habitRouter from './routes/habits.js';
 import indexRouter from './routes/index.js';
 import routineRouter from './routes/routines.js';
 import statisticsRouter from './routes/statistics.js';
@@ -31,6 +32,7 @@ app.use(express.static(path.join(path.resolve(), 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/routines', routineRouter);
+app.use('/habits', habitRouter);
 app.use('/routines/sub_routine', subRoutineRouter);
 app.use('/statistics', statisticsRouter);
 
